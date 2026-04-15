@@ -105,9 +105,13 @@ class RoninTerminal:
         """Display verbose subsystem check results."""
         from rich.columns import Columns
         
+        # Dynamic API label based on OS
+        api_label = "PowerShell API" if status['os'] == "Windows" else "Bash/Linux API"
+        api_status = status['powershell_ok'] if status['os'] == "Windows" else status['bash_ok']
+        
         info_lines = [
             f"[*] Ollama connection: {'[success]ONLINE[/success]' if status['ollama_connected'] else '[error]OFFLINE[/error]'}",
-            f"[*] Bash/Linux API:   {'[success]ONLINE[/success]' if status['bash_ok'] else '[error]ERROR[/error]'}",
+            f"[*] {api_label}:   {'[success]ONLINE[/success]' if api_status else '[error]ERROR[/error]'}",
             f"[*] Python Executor:  {'[success]ONLINE[/success]' if status['python_ok'] else '[error]ERROR[/error]'}",
             f"[*] Kali VM Link:     {'[success]CONNECTED[/success]' if self.agent.linked_vm else '[dim]OFFLINE[/dim]'}",
             f"[*] Memory Engine:    {'[success]READY[/success]' if status['memory_ok'] else '[error]ERROR[/error]'}"

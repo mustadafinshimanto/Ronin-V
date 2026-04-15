@@ -53,7 +53,7 @@ def cli(debug):
 
         # Initialize core components
         agent = RoninAgent(config)
-        terminal = RoninTerminal(agent)
+        terminal = RoninTerminal(agent, config)
 
         # Start the UI
         terminal.run()

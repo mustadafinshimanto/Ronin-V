@@ -126,30 +126,20 @@ def is_admin():
             import ctypes
             return ctypes.windll.shell32.IsUserAnAdmin()
         else:
-            return os.getuid() == 0
-    except Exception:
-        return False
-
-
-def ensure_admin():
-    """Request administrative privileges if not already elevated."""
-    import platform
-    if is_admin():
-        return
-
-    print("[*] Requesting administrative privileges for full system access...")
+def run_elevation_check():
+    """Ensure we have administrative/root rights."""
     try:
-        if platform.system() == "Windows":
+        if os.name == "nt":
             import ctypes
-            # Re-run the current script as admin
-            # Use ShellExecuteW with 'runas' verb to trigger UAC
-            ctypes.windll.shell32.ShellExecuteW(
-                None, "runas", sys.executable, " ".join(sys.argv), None, 1
-            )
-            sys.exit(0)
+            if not ctypes.windll.shell32.IsUserAnAdmin():
+                # Re-run the script as administrator
+                params = " ".join([f'"{arg}"' for arg in sys.argv])
+                ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, params, None, 1)
+                sys.exit(0)
         else:
-            # Re-run with sudo for Linux/Kali
-            os.execvp("sudo", ["sudo", sys.executable] + sys.argv)
+            if os.geteuid() != 0:
+                print("[!] ERROR: Ronin-V must be run with root privileges (sudo).")
+                sys.exit(1)
     except Exception as e:
         print(f"[ERROR] Failed to elevate privileges: {e}")
         sys.exit(1)

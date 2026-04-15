@@ -82,18 +82,21 @@ class RoninLLM:
             models = running.get("models", []) if isinstance(running, dict) else getattr(running, "models", [])
             
             for m in models:
+                # Normalizing model name check
                 name = m.get("name", "") if isinstance(m, dict) else getattr(m, "model", "")
                 if self.model_name in name or self.base_model in name:
+                    # Look for compute/vram in details
                     details = m.get("details", {}) if isinstance(m, dict) else getattr(m, "details", {})
-                    # Look for GPU/VRAM presence
-                    parent = details.get("parent_model", "")
-                    format = details.get("format", "")
-                    # Ollama 'ps' often contains 'processor' or similar in newer versions
-                    # For simplicity, we can also check 'vram_slots' or similar if available
-                    return {"name": name, "gpu": True, "type": "GPU Accelerator"}
+                    # In newer Ollama, 'processor' or checking vram_usage is better
+                    vram = m.get("vram_usage", 0) if isinstance(m, dict) else getattr(m, "size_vram", 0)
+                    
+                    if vram > 0 or "gpu" in str(details).lower():
+                        return {"name": name, "gpu": True, "type": "GPU Accelerator"}
+                    else:
+                        return {"name": name, "gpu": False, "type": "CPU Fallback"}
             
-            # Fallback for connection check
-            return {"name": self.model_name, "gpu": False, "type": "CPU Fallback"}
+            # If not in 'ps', it's not currently loaded - check list() for the name
+            return {"name": self.model_name, "gpu": False, "type": "Ollama Standby"}
         except Exception:
             return {"name": self.model_name, "gpu": False, "type": "DISCONNECTED"}
 

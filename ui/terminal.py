@@ -351,20 +351,26 @@ class RoninTerminal:
         self.console.print("\n")
 
     def _handle_interaction(self, user_input: str):
-        """Handle turn. Simplified for modern terminal stability."""
+        """Handle turn. Restored for full observability and reasoning support."""
         if self.agent.auto_mode:
             self.console.print(Panel(f"[bold green]Mission Initiated:[/bold green] {user_input}", border_style="success"))
             
             try:
-                # Use a simpler status layout
-                with self.console.status("[bold cyan]Agent is executing mission...", spinner="bouncingBar") as status:
-                    def status_callback(msg):
-                        status.update(f"[bold cyan]{msg}[/bold cyan]")
-                    
-                    # Run the loop and print chunks directly
-                    for chunk in self.agent.run_autonomous_loop(user_input, status_callback=status_callback):
-                        # Some chunks are observations (Rich markup), some are LLM text.
-                        # We print them directly to the console for maximum stability.
+                # We use the robust _stream_response logic for the autonomous loop too
+                # This ensures <think> tags are handled and output is visible
+                def hud_status(msg):
+                    # We print status updates on a new line to avoid interfering with stream
+                    if "Step" in msg or "Executing" in msg:
+                        self.console.print(f"[dim] {msg}[/dim]")
+
+                # Run the loop
+                for chunk in self.agent.run_autonomous_loop(user_input, status_callback=hud_status):
+                    # We can't use _stream_response directly on a generator of mixed chunks easily,
+                    # so we'll do a simplified version here that handles the yielding.
+                    if chunk.startswith("\n\n[bold cyan]─── Observation"):
+                        self.console.print(chunk)
+                    else:
+                        # For regular LLM text, we handle thinking tags
                         self.console.print(chunk, end="")
             except KeyboardInterrupt:
                 self.agent.stop_signal = True

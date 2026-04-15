@@ -341,12 +341,9 @@ class RoninAgent:
             commands = self.extract_commands(full_response)
             
             if not commands:
-                # No more commands, check for graceful finalization
-                if status_callback:
-                    status_callback(f"Step {step_count}/{self.max_steps}: [warning]Passive reasoning detected. Forcing action...[/warning]")
-                
-                # Add a hidden directive to force a command or finalization
-                self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Use `complete_task` to finalize your mission or provide a code block to proceed.", self.session_id)
+                # No commands found. This might be a conversational response or mission summary.
+                # In this case, we stop the autonomous loop and return to the user.
+                self.stop_signal = True
                 continue
                     
             # 3. Execute commands (In Auto-Mode, we just run them)

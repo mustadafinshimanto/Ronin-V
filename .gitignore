@@ -1,0 +1,78 @@
+# ─── Virtual Environment ───
+.venv/
+venv/
+env/
+ENV/
+bin/
+lib64/
+lib/
+include/
+share/
+
+# ─── Python Cache & Testing ───
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+.pytest_cache/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ─── Data / Runtime ───
+data/
+*.db
+*.sqlite3
+*.pkl
+*.pickle
+*.h5
+*.ipynb_checkpoints
+
+# ─── IDE ───
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# ─── OS ───
+Thumbs.db
+.DS_Store
+desktop.ini
+$RECYCLE.BIN/
+ehthumbs.db
+Icon?
+.Spotlight-V100
+.Trashes
+
+# ─── Distribution / Packaging ───
+dist/
+build/
+*.egg-info/
+egg-info/
+*.egg
+MANIFEST
+
+# ─── Secrets & Personal Configs ───
+.env
+.env.*
+*.secret
+api_keys.json
+secrets.json
+config.local.yaml
+credentials.json
+
+# ─── Logs ───
+*.log
+logs/
+error.log
+debug.log
+
+# ─── Ronin-V Specific ───
+modelfiles/ # Usually contains large model files not suitable for Git
+chroma/ # Vector database files if not in data/

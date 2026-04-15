@@ -422,21 +422,21 @@ class RoninAgent:
         commands = []
 
         # Match ```powershell ... ``` blocks
-        ps_pattern = r"```(?:powershell|ps1|ps)\n(.*?)```"
+        ps_pattern = r"```(?:powershell|ps1|ps)\s*(.*?)```"
         for match in re.finditer(ps_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
                 commands.append({"executor": "powershell", "code": code})
 
         # Match ```python ... ``` blocks  
-        py_pattern = r"```python\n(.*?)```"
+        py_pattern = r"```python\s*(.*?)```"
         for match in re.finditer(py_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
                 commands.append({"executor": "python", "code": code})
 
         # Match ```kali|vbox ... ``` blocks
-        vbox_pattern = r"```(?:kali|vbox|vm)\n(.*?)```"
+        vbox_pattern = r"```(?:kali|vbox|vm)\s*(.*?)```"
         for match in re.finditer(vbox_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
@@ -446,7 +446,7 @@ class RoninAgent:
                     commands.append({"executor": "vbox", "code": code})
 
         # Match ```bash ... ``` blocks
-        bash_pattern = r"```bash\n(.*?)```"
+        bash_pattern = r"```bash\s*(.*?)```"
         for match in re.finditer(bash_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):

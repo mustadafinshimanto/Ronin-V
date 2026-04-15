@@ -54,8 +54,6 @@ Ronin-V will now run its logic in Kali but generate its "thoughts" using your Wi
 
 ---
 
----
-
 ## 🚀 Installation & Setup
 
 ### Requirements
@@ -66,7 +64,7 @@ Ronin-V will now run its logic in Kali but generate its "thoughts" using your Wi
 ### Quick Start
 1. **Clone & Enter**:
    ```powershell
-   git clone <repo-url>
+   git clone https://github.com/mustadafinshimanto/Ronin-V.git
    cd Ronin-V
    ```
 2. **Environment Setup**:

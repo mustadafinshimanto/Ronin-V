@@ -367,11 +367,17 @@ class RoninAgent:
                     break
                 else:
                     # SELF-CORRECTION: If the AI is just talking without acting, force it to give a command
+                    # However, if it's the very first step and the AI just returned a greeting, don't force a loop.
+                    if step_count == 1 and len(full_response) < 300 and any(greeting in full_response.lower() for greeting in ["hello", "hi", "how can i assist"]):
+                        if status_callback:
+                            status_callback("Turn complete. Awaiting input.")
+                        break
+
                     if status_callback:
                         status_callback(f"Step {step_count}/{self.max_steps}: [warning]Passive reasoning detected. Forcing action...[/warning]")
                     
                     # Add a hidden directive to force a command or finalization
-                    self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Provide a code block to proceed or finalize with ✅.")
+                    self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Provide a code block to proceed or finalize with ✅.", self.session_id)
                     continue # Re-run this step with the new instruction context
                     
             # 3. Execute commands (In Auto-Mode, we just run them)

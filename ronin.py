@@ -12,11 +12,11 @@ def load_config():
         # Fallback to example config if not exists
         example_path = os.path.join(os.path.dirname(__file__), "config.example.yaml")
         if os.path.exists(example_path):
-            with open(example_path, "r") as f:
+            with open(example_path, "r", encoding="utf-8") as f:
                 return yaml.safe_load(f)
         raise FileNotFoundError(f"Config file not found at {config_path}")
     
-    with open(config_path, "r") as f:
+    with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
 def run_elevation_check():

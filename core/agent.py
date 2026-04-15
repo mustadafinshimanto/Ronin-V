@@ -368,10 +368,12 @@ class RoninAgent:
                 # No more commands, check if the goal is complete
                 if "✅" in full_response:
                     if status_callback:
-                        status_callback("Objective complete.")
+                        status_callback("Mission Success ✅")
                     break
                 else:
                     # Might need more information or just finished conversing
+                    if status_callback:
+                        status_callback("Turn complete. Awaiting input.")
                     break
                     
             # 3. Execute commands (In Auto-Mode, we just run them)

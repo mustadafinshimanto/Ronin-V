@@ -446,6 +446,8 @@ class RoninTerminal:
         with self.console.status(f"[bold green]Executing {executor} command...", spinner="dots"):
             if executor == "powershell":
                 result = self.agent.execute_powershell(code)
+            elif executor == "bash":
+                result = self.agent.execute_bash(code)
             elif executor == "vbox":
                 result = self.agent.execute_vbox(code)
             else:

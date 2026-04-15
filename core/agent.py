@@ -467,19 +467,30 @@ class RoninAgent:
                     commands.append({"executor": "vbox", "code": code})
 
         # Match ```bash ... ``` blocks
-        bash_pattern = r"```bash\s*(.*?)```"
+        bash_pattern = r"```(?:bash|sh|shell)\s*(.*?)```"
         for match in re.finditer(bash_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
                 if platform.system() == "Linux":
-                    # Native execution on Kali
                     commands.append({"executor": "bash", "code": code})
                 elif self.linked_vm:
-                    # If we have a VM linked, prefer running bash on the VM
                     commands.append({"executor": "vbox", "code": code})
                 else:
-                    # Otherwise fallback to WSL on host
-                    commands.append({"executor": "powershell", "code": f"wsl -e bash -c '{code}'"})
+                    # SMART ROUTER: Many 'bash' commands (ping, curl, ls) have PS aliases. 
+                    # Don't force WSL on a Windows user who doesn't use it.
+                    commands.append({"executor": "powershell", "code": code})
+
+        # Match ``` (no tag) ... ``` blocks  (Fallback for sloppy LLMs)
+        generic_pattern = r"```\s*(.*?)```"
+        for match in re.finditer(generic_pattern, response, re.DOTALL):
+            # Check if this content is already captured by specific tags
+            code = match.group(1).strip()
+            if any(code in [c["code"] for c in commands]):
+                continue
+            
+            if code and not code.startswith("#"):
+                executor = "powershell" if platform.system() == "Windows" else "bash"
+                commands.append({"executor": executor, "code": code})
 
         return commands
 
@@ -492,10 +503,13 @@ class RoninAgent:
         messages = []
         
         # 1. Base Identity (The most important context)
-        os_info = f"CURRENT OPERATING SYSTEM: {platform.system()} {platform.release()}"
+        os_type = platform.system()
+        shell = "PowerShell" if os_type == "Windows" else "Bash"
+        prompt = RONIN_SYSTEM_PROMPT.format(os_type=os_type, shell=shell)
+        
         messages.append({
             "role": "system",
-            "content": f"{RONIN_SYSTEM_PROMPT}\n\n{os_info}"
+            "content": prompt
         })
 
         # 2. Project-level context (.ronin_ctx)

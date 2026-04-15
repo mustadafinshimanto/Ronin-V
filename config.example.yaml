@@ -1,0 +1,56 @@
+# ╔══════════════════════════════════════════════════════════╗
+# ║              RONIN-V — Master Configuration             ║
+# ║        Windows-Native AI Terminal • Vibe Sentinel        ║
+# ╚══════════════════════════════════════════════════════════╝
+
+ronin:
+  name: "Ronin-V"
+  version: "0.1.0"
+  codename: "Vibe Sentinel"
+  data_dir: "./data"
+  log_level: "INFO"
+
+# ───────────────────────── LLM Model ─────────────────────────
+model:
+  name: "ronin-dolphin-v3"            # Custom Ollama model name (created from Modelfile)
+  base: "dolphin3"               # Base model from Ollama registry (Dolphin 3.0 Llama 3.1)
+  ctx_length: 8192
+  temperature: 0.7
+  top_p: 0.9
+
+# ───────────────────────── Ollama Server ─────────────────────────
+ollama:
+  host: "http://localhost:11434"
+  timeout: 120
+  keep_alive: "10m"
+
+# ───────────────────────── Memory ─────────────────────────
+memory:
+  chroma_path: "./data/chroma_db"
+  session_db: "./data/sessions/ronin.db"
+  max_context_docs: 5
+  embedding_model: "nomic-embed-text"
+  short_term_window: 20
+
+# ───────────────────────── Agent ─────────────────────────
+agent:
+  auto_mode: true                  # Default to autonomous mode
+  max_steps: 50                    # Extended tactical depth for complex tasks
+
+# ───────────────────────── Executors ─────────────────────────
+executors:
+  powershell:
+    enabled: true
+    timeout: 60                    # Max seconds per command
+    shell: "powershell.exe"
+  python:
+    enabled: true
+    timeout: 60
+
+# ───────────────────────── UI ─────────────────────────
+ui:
+  theme: "cyberpunk"
+  show_banner: true
+  markdown_rendering: true
+  typing_effect: false
+  typing_speed: 0.001

@@ -1,110 +1,91 @@
-<p align="center">
-  <img src="assets/banner.png" alt="Ronin-V Banner" width="100%">
-</p>
+# ╔══════════════════════════════════════════════════════════╗
+# ║                      RONIN-V                             ║
+# ║          Vibe Sentinel — Distributed AI Terminal         ║
+# ╚══════════════════════════════════════════════════════════╝
 
-# 🧠 RONIN-V: The Masterless CLI AI Engine
-> **Autonomous Agent | Unrestricted Execution | Built with Vibe Coding**
-
-**Ronin-V** (Codename: *Vibe Sentinel*) is a top-tier, autonomous AI terminal engine engineered for Windows and Linux. Unlike standard chatbots, Ronin-V is a **Reactive Autonomous System** that operates on a continuous loop of reasoning and execution. Whether it's complex system administration, penetration testing, or rapid full-stack scaffolding, Ronin-V reasons through problems, writes its own code, and executes it natively.
-
-Built by **Mustad afin shimanto** using "Vibe Coding" principles, Ronin-V is designed for operators who require a zero-censorship, high-autonomy tool that lives directly in the machine.
+**Ronin-V** is a masterless, unrestricted technical engine built for high-autonomy penetration testing, system orchestration, and distributed AI processing. Optimized for Windows 11 and Kali Linux.
 
 ---
 
-## ⚡ The Autonomous Engine Core
-At the heart of Ronin-V lies the **Plan-Act-Observe-Reflect** cycle. This allows the agent to handle complex, multi-step tasks with zero-prompt intervention.
-
-1.  **PLAN**: The AI analyzes your objective and formulates a multi-step roadmap.
-2.  **ACT**: It executes functional code (PowerShell, Python, or Bash) natively on the host or linked VM.
-3.  **OBSERVE**: It captures and analyzes the terminal output (stdout/stderr).
-4.  **REFLECT & SELF-HEAL**: If a command fails, the agent diagnoses the error, generates a fix, and executes again automatically.
-
----
-
-## 🛡️ Operational Modes & Sub-Agents
-Ronin-V features specialized personas that reconfigure the underlying model's expertise on the fly:
-
-*   **`/recon` (Discovery Mode)**: Optimized for security research. Focuses on asset discovery, Nmap analysis, and network mapping.
-*   **`/audit` (Analysis Mode)**: Focused on vulnerability research. Deep-dives into code flaws, CVE matching, and logic auditing.
-*   **`/vibe` (Generation Mode)**: Pure rapid-prototyping. Optimized for full-stack scaffolding and creative coding at high token speeds.
-*   **`/auto` (Overdrive)**: Engages the **Autonomous Overdrive**. The agent will not stop until the goal is marked complete with a ✅.
+## ⚡ Core Features
+- 🧠 **Autonomous Engine**: Zero-prompt troubleshooting using a Plan-Act-Observe loop.
+- 🌉 **Master-Guest Bridge**: Offload neural processing to a Windows GPU while acting natively inside a Kali VM.
+- 🐧 **Multi-Platform Native**: Intelligent detection and execution using PowerShell (Windows) or Bash (Linux).
+- 🧬 **Self-Healing Logic**: Automated error analysis and recovery for complex technical missions.
+- 🎨 **Cyberpunk TUI**: Responsive, high-fidelity terminal interface with slash-command mastery.
 
 ---
 
-## 🌉 Master-Guest Bridge (Distributed AI Mode)
-Perform high-speed hacking inside your VM while leveraging your Host's GPU for AI reasoning. This is the **recommended setup** for users with dedicated graphics cards.
+## 🚀 Installation
 
-### 1. Host-Side Setup (Windows)
-Set your Ollama server to allow remote neural connections from the VM.
-1. Press `Win + S` and search for "Edit the system environment variables".
-2. Add a new User Variable: `OLLAMA_HOST` with value `0.0.0.0`.
-3. Restart the Ollama application.
-4. **Firewall**: Ensure Port `11434` is allowed in your Windows Firewall for internal network traffic.
-
-### 2. Guest-Side Setup (Kali/Linux VM)
-1. Identity the Windows Host IP (usually `10.0.2.2` in VirtualBox NAT).
-2. Within the Ronin-V directory in your VM, update `config.yaml`:
-   ```yaml
-   ollama:
-     host: "http://10.0.2.2:11434"
-   ```
-3. Run `./run_ronin.sh` inside the VM. 
-
-Ronin-V will now run its logic in Kali but generate its "thoughts" using your Windows GPU at maximum speed.
-
----
-
-## 🚀 Installation & Setup
-
-### Requirements
-- **OS**: Windows 11 (Native) or Linux/Kali.
-- **Python**: 3.10+
-- **GPU**: 8GB+ VRAM recommended for fluid "Vibe" speed.
-
-### Quick Start
-1. **Clone & Enter**:
+### 1. Host Machine (Windows)
+1. **Prepare Ollama**: Ensure [Ollama](https://ollama.com/) is installed.
+2. **Project Setup**:
    ```powershell
    git clone https://github.com/mustadafinshimanto/Ronin-V.git
    cd Ronin-V
-   ```
-2. **Environment Setup**:
-   ```powershell
    python -m venv .venv
-   .\.venv\Scripts\Activate.ps1
+   .\.venv\Scripts\activate
    pip install -r requirements.txt
    ```
-3. **Model Preparation** (via [Ollama](https://ollama.com)):
-   ```powershell
-   ollama pull dolphin3
-   ollama pull nomic-embed-text
-   ollama create ronin-dolphin-v3 -f modelfiles\Modelfile.dolphin
-   ```
-
-4. **Launch**:
+3. **Initialize**:
    ```powershell
    .\run_ronin.bat
    ```
 
+### 2. Guest Machine (Kali Linux / VM)
+1. **Clone & Setup**:
+   ```bash
+   git clone https://github.com/mustadafinshimanto/Ronin-V.git
+   cd Ronin-V
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip3 install -r requirements.txt
+   ```
+2. **Configure (See Bridge Setup below)**
+3. **Initialize**:
+   ```bash
+   chmod +x run_ronin.sh
+   ./run_ronin.sh
+   ```
+
 ---
 
-## 🛠️ Elite Command Interface
+## 🌉 Master-Guest Bridge Setup (GPU Offloading)
+*Run your AI in Kali Linux but process thoughts on your Windows GPU for maximum speed.*
 
+### Step 1: Prepare the Host (Windows)
+Launch Ronin-V and run the automated bridge architect:
+`λ ronin > /bridge`
+> [*] This will set environment variables and create the necessary Firewall rules automatically.
+
+**CRITICAL**: Restart the Ollama application in your Windows tray after running `/bridge`.
+
+### Step 2: Configure the Guest (Kali VM)
+Identify your Windows Host IP (usually `192.168.56.1` for VirtualBox) and update your `config.yaml` on the VM:
+```yaml
+ollama:
+  host: "http://192.168.56.1:11434"
+```
+
+### Step 3: Ignition
+Run `./run_ronin.sh` in the VM. If the banner shows **`Ollama connection: ONLINE`**, you are successfully using your Host's GPU!
+
+---
+
+## 🛠️ Slash Command Mastery
 | Command | Action |
 | :--- | :--- |
-| **`Ctrl+A`** | Toggle between **AUTO** and **MANUAL** mode instantly |
-| **`Ctrl+C`** | Emergency Halt for the Autonomous Engine |
-| `/link` | Connect to a VirtualBox VM (Kali/Linux) |
-| `/status` | Run agent diagnostics and environment sync |
-| `/model` | Inspect the neural identity configuration |
-| `/clear` | Purge short-term RAM and clear the terminal |
-| `/help` | Launch the mastery manual |
+| `/auto` | Engage Autonomous Engine (Zero-Prompt Mode) |
+| `/bridge` | Automate Master-Guest Bridge & Firewall setup |
+| `/suggest` | Generate next tactical steps for the current environment |
+| `/status` | Running comprehensive system & neural diagnostics |
+| `/link` | Establish a Master Link to a VirtualBox VM |
+| `/clear` | Purge terminal and reset short-term memory |
 
 ---
 
-## 🛑 Legal Disclaimer
-**Ronin-V is strictly for authorized security research and educational use.** The developer (**Mustad afin shimanto**) assumes no liability for misuse, computational damage, or illegal activities. By using Ronin-V, you acknowledge that you have authorized permission to test the systems you interact with and assume all responsibility for the agent's actions.
+## 🛡️ License
+Unrestricted. Masterless. Built for the Sentinel.
 
----
-
-**Developed by:** [Mustad afin shimanto](https://github.com/mustadafinshimanto)  
-*Built using Vibe Coding. Masterless. Unrestricted.*
+> **Disclaimer**: This tool is for educational and ethical security research purposes only. The user assumes all responsibility for its deployment.

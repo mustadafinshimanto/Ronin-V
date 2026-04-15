@@ -21,7 +21,7 @@ from prompt_toolkit.history import FileHistory
 from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.key_binding import KeyBindings
 
-from ui.themes import CYBERPUNK_THEME, BANNER
+from ui.themes import CYBERPUNK_THEME, BANNER, MINI_BANNER
 from core.agent import RoninAgent
 from executors.powershell import CommandResult
 
@@ -107,9 +107,9 @@ class RoninTerminal:
         
         info_lines = [
             f"[*] Ollama connection: {'[success]ONLINE[/success]' if status['ollama_connected'] else '[error]OFFLINE[/error]'}",
-            f"[*] PowerShell API:   {'[success]ONLINE[/success]' if status['powershell_ok'] else '[error]ERROR[/error]'}",
+            f"[*] Bash/Linux API:   {'[success]ONLINE[/success]' if status['bash_ok'] else '[error]ERROR[/error]'}",
             f"[*] Python Executor:  {'[success]ONLINE[/success]' if status['python_ok'] else '[error]ERROR[/error]'}",
-            f"[*] Kali VM Link:     {'[success]CONNECTED[/success]' if self.agent.linked_vm else '[dim]DISCONNECTED[/dim]'}",
+            f"[*] Kali VM Link:     {'[success]CONNECTED[/success]' if self.agent.linked_vm else '[dim]OFFLINE[/dim]'}",
             f"[*] Memory Engine:    {'[success]READY[/success]' if status['memory_ok'] else '[error]ERROR[/error]'}"
         ]
 
@@ -289,7 +289,7 @@ class RoninTerminal:
                 for chunk in self.agent.run_autonomous_loop(user_input, status_callback=update_status):
                     response_text += chunk
                     # Update live display with new text segment
-                    update_status(f"Step {self.agent.max_steps}: Processing...") # Re-trigger layout refresh
+                    update_status(f"Step {step_count}/{self.agent.max_steps}: Processing...") # Dynamic step tracking
             except KeyboardInterrupt:
                 self.agent.stop_signal = True
                 self.console.print("\n[warning]Force Stop: Autonomous loop terminated.[/warning]")

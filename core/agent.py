@@ -17,6 +17,8 @@ from core.prompts import OBSERVE_PROMPT, ERROR_RECOVERY_PROMPT, SUGGEST_PROMPT
 from executors.powershell import PowerShellExecutor, CommandResult
 from executors.python_exec import PythonExecutor
 from executors.vbox import VBoxExecutor, VBoxResult
+from executors.bash import BashExecutor
+import platform
 
 
 class RoninAgent:
@@ -49,6 +51,7 @@ class RoninAgent:
         self.ps_executor = PowerShellExecutor(config)
         self.py_executor = PythonExecutor(config)
         self.vbox_executor = VBoxExecutor(config)
+        self.bash_executor = BashExecutor(config)
 
         # VM Link State
         self.linked_vm = None  # {name: "", user: "", pass: ""}
@@ -90,6 +93,7 @@ class RoninAgent:
             "ollama_connected": self.llm.check_connection(),
             "model_available": False,
             "powershell_ok": self.ps_executor.test_connection(),
+            "bash_ok": self.bash_executor.test_connection(),
             "python_ok": self.py_executor.test_connection(),
             "memory_ok": True,
         }
@@ -271,6 +275,21 @@ class RoninAgent:
 
         return result
 
+    def execute_bash(self, command: str) -> CommandResult:
+        """
+        Execute a native Bash command on Linux.
+        """
+        result = self.bash_executor.execute(command)
+
+        # Log to memory
+        self.memory.add_message(
+            "assistant",
+            f"[EXECUTED Bash] `{command}`\nExit: {result.exit_code}\n{result.stdout[:500]}",
+            self.session_id,
+            metadata={"type": "execution", "executor": "bash", "exit_code": result.exit_code}
+        )
+        return result
+
     def execute_vbox(self, command: str) -> CommandResult:
         """
         Execute a command on the linked VirtualBox VM.
@@ -364,6 +383,10 @@ class RoninAgent:
                 
                 if cmd["executor"] == "powershell":
                     result = self.execute_powershell(cmd["code"])
+                elif cmd["executor"] == "bash":
+                    result = self.execute_bash(cmd["code"])
+                elif cmd["executor"] == "vbox":
+                    result = self.execute_vbox(cmd["code"])
                 else:
                     result = self.execute_python(cmd["code"])
                 
@@ -415,14 +438,20 @@ class RoninAgent:
         for match in re.finditer(vbox_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
-                commands.append({"executor": "vbox", "code": code})
+                if platform.system() == "Linux":
+                    commands.append({"executor": "bash", "code": code})
+                else:
+                    commands.append({"executor": "vbox", "code": code})
 
         # Match ```bash ... ``` blocks
         bash_pattern = r"```bash\n(.*?)```"
         for match in re.finditer(bash_pattern, response, re.DOTALL | re.IGNORECASE):
             code = match.group(1).strip()
             if code and not code.startswith("#"):
-                if self.linked_vm:
+                if platform.system() == "Linux":
+                    # Native execution on Kali
+                    commands.append({"executor": "bash", "code": code})
+                elif self.linked_vm:
                     # If we have a VM linked, prefer running bash on the VM
                     commands.append({"executor": "vbox", "code": code})
                 else:

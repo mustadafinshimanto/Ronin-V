@@ -66,6 +66,7 @@ api_keys.json
 secrets.json
 config.local.yaml
 credentials.json
+config.yaml
 
 # ─── Logs ───
 *.log

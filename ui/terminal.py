@@ -285,13 +285,32 @@ class RoninTerminal:
             live = Live(status_panel, refresh_per_second=15, console=self.console)
             live.start()
             
+            log_buffer = [] # Local buffer for current execution logs
+            
             def update_status(msg):
-                panel = Panel(Spinner("aesthetic", text=msg), border_style="cyan", title="Autonomous Engine", width=panel_width)
-                # Combine the thinking panel with whatever response has been collected so far
-                if response_text.strip():
-                    live.update(Group(panel, Markdown(response_text)))
+                # Detect if this is a log line or a strategy status
+                is_log = not msg.startswith("Step ") and not "Mission Success" in msg and not "Turn complete" in msg
+                
+                if is_log:
+                    log_buffer.append(f"[dim]>[/dim] {msg}")
+                    if len(log_buffer) > 8: log_buffer.pop(0) # Keep last 8 lines for readability
                 else:
-                    live.update(panel)
+                    log_buffer.clear() # Clear logs when moving to a new thinking phase
+                
+                # Top Panel: Tactical Strategy
+                strategy_panel = Panel(Spinner("aesthetic", text=msg), border_color="cyan", title="Autonomous Engine", width=panel_width)
+                
+                # Bottom Panel: Real-time Execution Logs (Only shown if logs exist)
+                elements = [strategy_panel]
+                if log_buffer:
+                    log_panel = Panel("\n".join(log_buffer), title="[bold yellow]Mission Logs[/bold yellow]", border_style="yellow", width=panel_width)
+                    elements.append(log_panel)
+                
+                # Streamed AI Response
+                if response_text.strip():
+                    elements.append(Markdown(response_text))
+                
+                live.update(Group(*elements))
             
             # Execute the loop
             response_text = ""

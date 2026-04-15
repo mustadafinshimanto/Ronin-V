@@ -50,68 +50,52 @@ class PowerShellExecutor:
         self.shell = exec_config.get("shell", "powershell.exe")
         self.enabled = exec_config.get("enabled", True)
 
-    def execute(self, command: str, timeout: int | None = None, cwd: str | None = None) -> CommandResult:
-        """
-        Execute a PowerShell command.
-        
-        Args:
-            command: PowerShell command string to execute
-            timeout: Override default timeout (seconds)
-            cwd: Working directory (defaults to current)
-            
-        Returns:
-            CommandResult with stdout, stderr, exit code
-        """
+    def execute(self, command: str, timeout: int | None = None, cwd: str | None = None, status_callback=None) -> CommandResult:
+        """Execute a PowerShell command with real-time feedback."""
         if not self.enabled:
-            return CommandResult(
-                command=command,
-                exit_code=-1,
-                stdout="",
-                stderr="PowerShell executor is disabled in config.",
-            )
+            return CommandResult(command=command, exit_code=-1, stdout="", stderr="PowerShell executor is disabled in config.")
 
         timeout = timeout or self.timeout
-
         try:
-            result = subprocess.run(
+            process = subprocess.Popen(
                 [self.shell, "-NoProfile", "-NonInteractive", "-Command", command],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
                 text=True,
-                timeout=timeout,
                 cwd=cwd or os.getcwd(),
-                # Don't create a new console window
                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                bufsize=1,
+                universal_newlines=True
             )
+
+            full_stdout = []
+            full_stderr = []
+
+            # Stream stdout
+            while True:
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                if line:
+                    full_stdout.append(line)
+                    if status_callback:
+                        status_callback(line.strip())
+
+            # Collect stderr
+            stderr_out = process.stderr.read()
+            if stderr_out:
+                full_stderr.append(stderr_out)
 
             return CommandResult(
                 command=command,
-                exit_code=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
+                exit_code=process.returncode,
+                stdout="".join(full_stdout),
+                stderr="".join(full_stderr),
             )
 
-        except subprocess.TimeoutExpired:
-            return CommandResult(
-                command=command,
-                exit_code=-1,
-                stdout="",
-                stderr=f"Command timed out after {timeout} seconds.",
-                timed_out=True,
-            )
-        except FileNotFoundError:
-            return CommandResult(
-                command=command,
-                exit_code=-1,
-                stdout="",
-                stderr=f"Shell not found: {self.shell}. Is PowerShell installed?",
-            )
         except Exception as e:
-            return CommandResult(
-                command=command,
-                exit_code=-1,
-                stdout="",
-                stderr=f"Execution error: {str(e)}",
-            )
+            return CommandResult(command=command, exit_code=-1, stdout="", stderr=f"Execution error: {str(e)}")
 
     def execute_script(self, script_path: str, timeout: int | None = None) -> CommandResult:
         """

@@ -239,17 +239,11 @@ class RoninAgent:
 
     # ─── Command Execution ───
 
-    def execute_powershell(self, command: str) -> CommandResult:
+    def execute_powershell(self, command: str, status_callback=None) -> CommandResult:
         """
         Execute a PowerShell command and log it.
-        
-        Args:
-            command: PowerShell command string
-            
-        Returns:
-            CommandResult
         """
-        result = self.ps_executor.execute(command)
+        result = self.ps_executor.execute(command, status_callback=status_callback)
 
         # Log the execution to memory
         self.memory.add_message(
@@ -385,7 +379,7 @@ class RoninAgent:
                     status_callback(f"Executing {cmd['executor']} command...")
                 
                 if cmd["executor"] == "powershell":
-                    result = self.execute_powershell(cmd["code"])
+                    result = self.execute_powershell(cmd["code"], status_callback=status_callback)
                 elif cmd["executor"] == "bash":
                     result = self.execute_bash(cmd["code"], status_callback=status_callback)
                 elif cmd["executor"] == "vbox":

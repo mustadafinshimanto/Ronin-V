@@ -275,11 +275,11 @@ class RoninAgent:
 
         return result
 
-    def execute_bash(self, command: str) -> CommandResult:
+    def execute_bash(self, command: str, status_callback=None) -> CommandResult:
         """
         Execute a native Bash command on Linux.
         """
-        result = self.bash_executor.execute(command)
+        result = self.bash_executor.execute(command, status_callback=status_callback)
 
         # Log to memory
         self.memory.add_message(
@@ -386,7 +386,7 @@ class RoninAgent:
                 if cmd["executor"] == "powershell":
                     result = self.execute_powershell(cmd["code"])
                 elif cmd["executor"] == "bash":
-                    result = self.execute_bash(cmd["code"])
+                    result = self.execute_bash(cmd["code"], status_callback=status_callback)
                 elif cmd["executor"] == "vbox":
                     result = self.execute_vbox(cmd["code"])
                 else:

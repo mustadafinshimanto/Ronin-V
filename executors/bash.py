@@ -25,30 +25,56 @@ class BashExecutor:
         except Exception:
             return False
 
-    def execute(self, command: str) -> CommandResult:
-        """Execute a bash command and return the result."""
+    def execute(self, command: str, status_callback=None) -> CommandResult:
+        """Execute a bash command with real-time output and potential interaction."""
         try:
-            # Use -c to execute the command string
-            process = subprocess.run(
+            # Use Popen to allow real-time reading and interaction
+            process = subprocess.Popen(
                 [self.shell, "-c", command],
-                capture_output=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                stdin=subprocess.PIPE,
                 text=True,
-                timeout=self.timeout
+                bufsize=1,
+                universal_newlines=True
             )
-            
+
+            full_stdout = []
+            full_stderr = []
+
+            # Monitor the process and yield status
+            while True:
+                # Check for output
+                line = process.stdout.readline()
+                if not line and process.poll() is not None:
+                    break
+                
+                if line:
+                    full_stdout.append(line)
+                    if status_callback:
+                        # Detect if the line looks like a prompt (e.g. "[y/N]" or "Password:")
+                        if any(p in line for p in ["[y/n]", "[y/N]", "Password:", "Continue?"]):
+                             status_callback(f"Process awaiting input: [bold yellow]{line.strip()}[/bold yellow]")
+                             # Auto-response logic: Default to 'y' for most prompts
+                             if "[y/n]" in line.lower():
+                                 process.stdin.write("y\n")
+                                 process.stdin.flush()
+                                 status_callback("Sending autonomous input: [success]y[/success]")
+                        else:
+                            status_callback(line.strip())
+
+            # Collect remaining stderr
+            stderr_out = process.stderr.read()
+            if stderr_out:
+                full_stderr.append(stderr_out)
+
             return CommandResult(
                 success=(process.returncode == 0),
-                stdout=process.stdout,
-                stderr=process.stderr,
+                stdout="".join(full_stdout),
+                stderr="".join(full_stderr),
                 exit_code=process.returncode
             )
-        except subprocess.TimeoutExpired:
-            return CommandResult(
-                success=False,
-                stdout="",
-                stderr=f"Error: Command timed out after {self.timeout} seconds.",
-                exit_code=124
-            )
+            
         except Exception as e:
             return CommandResult(
                 success=False,

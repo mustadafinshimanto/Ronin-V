@@ -37,16 +37,6 @@ class RoninLLM:
         # Initialize Ollama client
         self.client = ollama.Client(host=ollama_host, timeout=self.timeout)
 
-        # System message — always first in conversation
-        import platform
-        os_name = platform.system()
-        os_release = platform.release()
-        
-        self.system_message = {
-            "role": "system",
-            "content": RONIN_SYSTEM_PROMPT.format(os=os_name, os_release=os_release)
-        }
-
     def check_connection(self) -> bool:
         """Check if Ollama server is reachable."""
         try:
@@ -122,20 +112,7 @@ class RoninLLM:
     def chat(self, messages: list[dict], stream: bool = True) -> Generator[str, None, None] | str:
         """
         Send a chat request to the model.
-        
-        Args:
-            messages: List of message dicts [{"role": "user/assistant", "content": "..."}]
-            stream: Whether to stream the response token by token
-            
-        Yields:
-            Response content chunks (if streaming)
-            
-        Returns:
-            Full response string (if not streaming)
         """
-        # Prepend system message
-        full_messages = [self.system_message] + messages
-
         options = {
             "temperature": self.temperature,
             "top_p": self.top_p,
@@ -144,11 +121,11 @@ class RoninLLM:
 
         try:
             if stream:
-                return self._stream_chat(full_messages, options)
+                return self._stream_chat(messages, options)
             else:
                 response = self.client.chat(
                     model=self.model_name,
-                    messages=full_messages,
+                    messages=messages,
                     options=options,
                     keep_alive=self.keep_alive,
                 )
@@ -158,24 +135,26 @@ class RoninLLM:
                 else:
                     content = getattr(getattr(response, "message", None), "content", "")
                 return content
-        except ollama.ResponseError:
-            # Model not found by custom name — try base model
-            self.model_name = self.base_model
-            if stream:
-                return self._stream_chat(full_messages, options)
-            else:
-                response = self.client.chat(
-                    model=self.model_name,
-                    messages=full_messages,
-                    options=options,
-                    keep_alive=self.keep_alive,
-                )
-                content = ""
-                if isinstance(response, dict):
-                    content = response.get("message", {}).get("content", "")
+        except ollama.ResponseError as e:
+            if e.status_code == 404:
+                # Model not found by custom name — try base model
+                self.model_name = self.base_model
+                if stream:
+                    return self._stream_chat(messages, options)
                 else:
-                    content = getattr(getattr(response, "message", None), "content", "")
-                return content
+                    response = self.client.chat(
+                        model=self.model_name,
+                        messages=messages,
+                        options=options,
+                        keep_alive=self.keep_alive,
+                    )
+                    content = ""
+                    if isinstance(response, dict):
+                        content = response.get("message", {}).get("content", "")
+                    else:
+                        content = getattr(getattr(response, "message", None), "content", "")
+                    return content
+            raise e
 
     def _stream_chat(self, messages: list[dict], options: dict) -> Generator[str, None, None]:
         """Internal streaming chat implementation."""

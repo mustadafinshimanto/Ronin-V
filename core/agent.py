@@ -105,6 +105,7 @@ class RoninAgent:
         self._model_ready = status["model_available"]
 
         status["host_ips"] = self._get_host_ips()
+        status["compute"] = self.llm.get_compute_info()
         return status
 
     def _get_host_ips(self) -> list[str]:

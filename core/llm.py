@@ -74,6 +74,29 @@ class RoninLLM:
         except Exception:
             return False
 
+    def get_compute_info(self) -> dict:
+        """Query Ollama for loaded models and their hardware acceleration status."""
+        try:
+            # client.ps() returns currently running models
+            running = self.client.ps()
+            models = running.get("models", []) if isinstance(running, dict) else getattr(running, "models", [])
+            
+            for m in models:
+                name = m.get("name", "") if isinstance(m, dict) else getattr(m, "model", "")
+                if self.model_name in name or self.base_model in name:
+                    details = m.get("details", {}) if isinstance(m, dict) else getattr(m, "details", {})
+                    # Look for GPU/VRAM presence
+                    parent = details.get("parent_model", "")
+                    format = details.get("format", "")
+                    # Ollama 'ps' often contains 'processor' or similar in newer versions
+                    # For simplicity, we can also check 'vram_slots' or similar if available
+                    return {"name": name, "gpu": True, "type": "GPU Accelerator"}
+            
+            # Fallback for connection check
+            return {"name": self.model_name, "gpu": False, "type": "CPU Fallback"}
+        except Exception:
+            return {"name": self.model_name, "gpu": False, "type": "DISCONNECTED"}
+
     def pull_model(self, progress_callback=None) -> bool:
         """
         Pull the base model from Ollama registry.

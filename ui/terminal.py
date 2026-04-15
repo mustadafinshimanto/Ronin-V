@@ -109,8 +109,14 @@ class RoninTerminal:
         api_label = "PowerShell API" if status['os'] == "Windows" else "Bash/Linux API"
         api_status = status['powershell_ok'] if status['os'] == "Windows" else status['bash_ok']
         
+        # Compute info (GPU/Model)
+        compute = status.get("compute", {"name": "Unknown", "gpu": False, "type": "Detecting..."})
+        compute_label = f"[success]{compute['type']}[/success]" if compute['gpu'] else f"[dim]{compute['type']}[/dim]"
+        
         info_lines = [
             f"[*] Ollama connection: {'[success]ONLINE[/success]' if status['ollama_connected'] else '[error]OFFLINE[/error]'}",
+            f"[*] Neural Compute:    {compute_label}",
+            f"[*] Active Model:      [cyan]{compute['name']}[/cyan]",
             f"[*] {api_label}:   {'[success]ONLINE[/success]' if api_status else '[error]ERROR[/error]'}",
             f"[*] Python Executor:  {'[success]ONLINE[/success]' if status['python_ok'] else '[error]ERROR[/error]'}",
             f"[*] Kali VM Link:     {'[success]CONNECTED[/success]' if self.agent.linked_vm else '[dim]OFFLINE[/dim]'}",

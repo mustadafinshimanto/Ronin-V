@@ -25,6 +25,24 @@ class VBoxExecutor:
         if not os.path.exists(self.vbox_path):
             self.vbox_path = "VBoxManage" # Fallback to PATH
 
+    def list_vms(self) -> List[dict]:
+        """List all currently registered VirtualBox VMs."""
+        try:
+            result = subprocess.run(
+                [self.vbox_path, "list", "vms"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            vms = []
+            for line in result.stdout.splitlines():
+                if '"' in line:
+                    name = line.split('"')[1]
+                    vms.append({"name": name})
+            return vms
+        except Exception:
+            return []
+
     def test_connection(self, vm_name: str, username: str, password: str) -> bool:
         """Test if we can connect to the guest and run a simple command."""
         result = self.execute(vm_name, username, password, "whoami")

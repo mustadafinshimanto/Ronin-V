@@ -76,9 +76,25 @@ class RoninAgent:
         self.stop_signal = False
         self.max_steps = config.get("agent", {}).get("max_steps", 10)
         
-        # Track if system is ready
-        self._ollama_ready = False
-        self._model_ready = False
+        # Auto-Discovery: Find Kali VM and pre-link with default credentials
+        self._auto_link_kali()
+
+    def _auto_link_kali(self):
+        """Find a Kali VM and try connecting with default credentials."""
+        try:
+            vms = self.vbox_executor.list_vms()
+            for vm in vms:
+                if "kali" in vm["name"].lower():
+                    # Attempt connection with default kali/kali
+                    if self.vbox_executor.test_connection(vm["name"], "kali", "kali"):
+                        self.linked_vm = {
+                            "name": vm["name"],
+                            "user": "kali",
+                            "pass": "kali"
+                        }
+                        break
+        except Exception:
+            pass
 
     # ─── System Status ───
 

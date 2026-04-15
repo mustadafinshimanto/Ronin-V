@@ -366,10 +366,13 @@ class RoninAgent:
                         status_callback("Mission Success ✅")
                     break
                 else:
-                    # Might need more information or just finished conversing
+                    # SELF-CORRECTION: If the AI is just talking without acting, force it to give a command
                     if status_callback:
-                        status_callback("Turn complete. Awaiting input.")
-                    break
+                        status_callback(f"Step {step_count}/{self.max_steps}: [warning]Passive reasoning detected. Forcing action...[/warning]")
+                    
+                    # Add a hidden directive to force a command or finalization
+                    self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Provide a code block to proceed or finalize with ✅.")
+                    continue # Re-run this step with the new instruction context
                     
             # 3. Execute commands (In Auto-Mode, we just run them)
             for cmd in commands:

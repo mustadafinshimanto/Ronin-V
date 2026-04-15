@@ -281,7 +281,7 @@ class RoninTerminal:
             panel_width = min(60, self.console.width - 4)
             
             # Use a Group to combine the Thought Panel (with Spinner) and the actual streamed Output
-            status_panel = Panel(Spinner("aesthetic", text="Agent initializing autonomous sequence..."), border_style="cyan", width=panel_width)
+            status_panel = Panel(Spinner("dots", text="Agent initializing autonomous sequence..."), border_style="cyan", width=panel_width)
             live = Live(status_panel, refresh_per_second=15, console=self.console)
             live.start()
             
@@ -298,7 +298,7 @@ class RoninTerminal:
                     log_buffer.clear() # Clear logs when moving to a new thinking phase
                 
                 # Top Panel: Tactical Strategy
-                strategy_panel = Panel(Spinner("aesthetic", text=msg), border_style="cyan", title="Autonomous Engine", width=panel_width)
+                strategy_panel = Panel(Spinner("dots", text=msg), border_style="cyan", title="Autonomous Engine", width=panel_width)
                 
                 # Bottom Panel: Real-time Execution Logs (Only shown if logs exist)
                 elements = [strategy_panel]
@@ -349,7 +349,7 @@ class RoninTerminal:
         panel_width = min(42, self.console.width - 4)
         
         # Immediately display a moving aesthetic spinner while waiting for the model
-        thinking_ui = Panel(Spinner("aesthetic", text="Neural link initializing..."), border_style="dim", width=panel_width)
+        thinking_ui = Panel(Spinner("dots", text="Neural link initializing..."), border_style="dim", width=panel_width)
         live = Live(thinking_ui, refresh_per_second=15, console=self.console)
         live.start()
         
@@ -364,7 +364,7 @@ class RoninTerminal:
                             full_text += buffer[:start_idx]
                             buffer = buffer[start_idx + 7:]
                             is_thinking = True
-                            live.update(Panel(Spinner("aesthetic", text="Neural link processing intents..."), border_style="dim", width=46))
+                            live.update(Panel(Spinner("dots", text="Neural link processing intents..."), border_style="dim", width=46))
                             continue
                     else:
                         end_idx = buffer.find("</think>")

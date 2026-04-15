@@ -9,8 +9,7 @@ import subprocess
 import sys
 import os
 import tempfile
-from executors.powershell import CommandResult
-
+from core.types import CommandResult
 
 class PythonExecutor:
     """
@@ -47,6 +46,7 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr="Python executor is disabled in config.",
+                success=False
             )
 
         timeout = timeout or self.timeout
@@ -68,6 +68,7 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr=f"Failed to create temp script: {e}",
+                success=False
             )
 
         try:
@@ -85,6 +86,7 @@ class PythonExecutor:
                 exit_code=result.returncode,
                 stdout=result.stdout,
                 stderr=result.stderr,
+                success=(result.returncode == 0)
             )
 
         except subprocess.TimeoutExpired:
@@ -93,7 +95,8 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr=f"Script timed out after {timeout} seconds.",
-                timed_out=True,
+                success=False,
+                timed_out=True
             )
         except Exception as e:
             return CommandResult(
@@ -101,6 +104,7 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr=f"Execution error: {str(e)}",
+                success=False
             )
         finally:
             # Clean up temp file
@@ -135,6 +139,7 @@ class PythonExecutor:
                 exit_code=result.returncode,
                 stdout=result.stdout,
                 stderr=result.stderr,
+                success=(result.returncode == 0)
             )
         except subprocess.TimeoutExpired:
             return CommandResult(
@@ -142,7 +147,8 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr=f"Timed out after {timeout}s.",
-                timed_out=True,
+                success=False,
+                timed_out=True
             )
         except Exception as e:
             return CommandResult(
@@ -150,6 +156,7 @@ class PythonExecutor:
                 exit_code=-1,
                 stdout="",
                 stderr=str(e),
+                success=False
             )
 
     def test_connection(self) -> bool:

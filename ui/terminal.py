@@ -15,6 +15,8 @@ from rich.panel import Panel
 from rich.live import Live
 from rich.spinner import Spinner
 from rich.prompt import Confirm
+from rich.table import Table
+from rich.columns import Columns
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 from prompt_toolkit.history import FileHistory
@@ -24,6 +26,98 @@ from prompt_toolkit.key_binding import KeyBindings
 from ui.themes import CYBERPUNK_THEME, BANNER, MINI_BANNER
 from core.agent import RoninAgent
 from executors.powershell import CommandResult
+
+
+class MissionHUD:
+    """State-managed tactical display (Sentinel Build)."""
+    def __init__(self, console, width: int, agent):
+        self.console = console
+        self.width = width
+        self.agent = agent
+        self.strategy_msg = "Awaiting deployment..."
+        self.log_buffer = []
+        self.response_text = ""
+        self.live = None
+        self.step_count = 0
+
+    def start(self):
+        # Refresh per second reduced to 4 to stop flickering on high-load streaming
+        self.live = Live(self._build_ui(), refresh_per_second=4, console=self.console)
+        self.live.start()
+
+    def stop(self):
+        if self.live:
+            self.live.stop()
+
+    def update_strategy(self, msg: str):
+        # Extract step count if available
+        if "Step " in msg:
+            try:
+                self.step_count = msg.split("/")[0].split(" ")[1]
+            except Exception: pass
+            
+        self.strategy_msg = msg
+        if msg.startswith("Step "):
+            self.log_buffer = []
+        self._refresh()
+
+    def add_log(self, log: str):
+        self.log_buffer.append(f"[dim]>[/dim] {log}")
+        if len(self.log_buffer) > 6:
+            self.log_buffer.pop(0)
+        self._refresh()
+
+    def update_response(self, chunk: str):
+        self.response_text += chunk
+        self._refresh()
+
+    def _refresh(self):
+        if self.live:
+            self.live.update(self._build_ui())
+
+    def _build_ui(self):
+        # 1. Header: Telemetry
+        vm_status = "[success]LINKED[/success]" if self.agent.linked_vm else "[dim]OFFLINE[/dim]"
+        header = Columns([
+            f"[bold cyan]MISSION STEP:[/bold cyan] {self.step_count}",
+            f"[bold cyan]VM STATUS:[/bold cyan] {vm_status}",
+            f"[bold cyan]MODE:[/bold cyan] [success]SENTINEL AUTO[/success]"
+        ], equal=True, expand=True)
+
+        # 2. Main Grid: Tactical Status
+        grid = Table.grid(expand=True)
+        grid.add_column(width=12)
+        grid.add_column()
+        
+        status_spinner = Spinner("dots", text=f"[cyan]{self.strategy_msg}[/cyan]")
+        grid.add_row("[bold]STRATEGY[/bold]", status_spinner)
+        
+        # 3. Mission Logs
+        logs = "\n".join(self.log_buffer) if self.log_buffer else "[dim]No recent logs.[/dim]"
+        
+        # Assemble Panels
+        main_panel = Panel(
+            Group(
+                header,
+                "[dim]──────────────────────────────────────────────────────────[/dim]",
+                grid,
+                "[dim]──────────────────────────────────────────────────────────[/dim]",
+                "[bold yellow]MISSION LOGS[/bold yellow]",
+                logs
+            ),
+            title="[header]Ronin-V Tactical Sentinel HUD[/header]",
+            border_style="cyan",
+            width=self.width
+        )
+        
+        elements = [main_panel]
+        
+        # 4. Streamed Response
+        if self.response_text.strip():
+            # Apply Markdown for better aesthetics 
+            elements.append(Markdown(self.response_text))
+            
+        return Group(*elements)
 
 
 class RoninTerminal:
@@ -36,8 +130,6 @@ class RoninTerminal:
         self.console = Console(theme=CYBERPUNK_THEME)
         self.config = config.get("ui", {})
         
-        # Setup input session with history
-        # Setup keys for mode switching and navigation
         self.kb = KeyBindings()
         
         @self.kb.add('escape', 'enter')
@@ -49,14 +141,12 @@ class RoninTerminal:
             self.agent.auto_mode = not self.agent.auto_mode
             self.console.print(f"\n[info]Mode switched to {'AUTO' if self.agent.auto_mode else 'MANUAL'}[/info]")
 
-        # Setup input session with history and UI enhancements
         style = Style.from_dict({
             'prompt': '#ff2a2a bold',
             'bottom-toolbar': 'bg:#1a0505 #ff4a4a',
             'rprompt': '#888888',
         })
         
-        # Setup auto-completion and auto-suggestions (ghost text)
         from prompt_toolkit.completion import Completer, Completion
         from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
         
@@ -153,8 +243,6 @@ class RoninTerminal:
 
         while True:
             try:
-                # Get input using prompt_toolkit for history/navigation
-                # Get input using prompt_toolkit for history/navigation/toolbar
                 user_input = self.session.prompt("λ ronin > ")
                 user_input = user_input.strip()
 
@@ -165,8 +253,12 @@ class RoninTerminal:
                     break
                 elif user_input.lower() in ["clear", "cls", "/clear", "/cls"]:
                     self.console.clear()
-                    self.agent.memory.start_session(self.agent.session_id) # Reset internal short-term memory
-                    self.console.print("[info]Terminal cleared and context reset.[/info]\n")
+                    # Reset memory state and start a fresh session to escape loops
+                    import uuid
+                    self.agent.memory.clear_short_term()
+                    self.agent.session_id = str(uuid.uuid4())[:8]
+                    self.agent.memory.start_session(self.agent.session_id)
+                    self.console.print("[info]Terminal cleared and tactical context reset (New Session ID: " + self.agent.session_id + ").[/info]\n")
                     continue
                 elif user_input.lower() == "/help":
                     self._show_help()
@@ -186,48 +278,42 @@ class RoninTerminal:
                         border_style="info"
                     ))
                     continue
-
                 elif user_input.lower() == "/auto":
                     self.agent.auto_mode = True
-                    self.console.print(Panel("[success]AUTONOMOUS ENGINE ENGAGED[/success]\nAgent will now execute sequences until objective is marked complete (✅).", border_style="success"))
+                    self.console.print(Panel("[success]AUTONOMOUS ENGINE ENGAGED[/success]\nAgent will now execute sequences until objective is marked complete.", border_style="success"))
                     continue
                 elif user_input.lower() == "/manual":
                     self.agent.auto_mode = False
-                    self.console.print(Panel("[info]MANUAL OVERRIDE ENGAGED[/info]\nAll commands will require explicit [y/n] authorization.", border_style="info"))
+                    self.console.print(Panel("[info]MANUAL OVERRIDE ENGAGED[/info]\nAll commands will require explicit authorization.", border_style="info"))
                     continue
                 elif user_input.lower() in ["/recon", "/audit", "/vibe"]:
                     role = user_input[1:].lower()
                     self.agent.set_role(role)
-                    self.console.print(Panel(f"Agent role specialized for: [bold white]{role.upper()}[/bold white]\nPrompt and priority logic synchronized.", border_style="panel.border"))
+                    self.console.print(Panel(f"Agent role specialized for: [bold white]{role.upper()}[/bold white]", border_style="panel.border"))
                     continue
-
                 elif user_input.lower().startswith("/link"):
                     parts = user_input.split()
                     if len(parts) != 4:
                         self.console.print("[warning]Usage: /link <vm_name> <user> <pass>[/warning]")
                         continue
-                    
                     vm_name, user, password = parts[1], parts[2], parts[3]
                     with self.console.status(f"[bold cyan]Linking to {vm_name}...", spinner="aesthetic"):
                         if self.agent.vbox_executor.test_connection(vm_name, user, password):
                             self.agent.linked_vm = {"name": vm_name, "user": user, "pass": password}
-                            self.console.print(Panel(f"[success]Master Link established with {vm_name}[/success]\nRonin-V can now execute commands directly on this Kali VM.", border_style="success"))
+                            self.console.print(Panel(f"[success]Master Link established with {vm_name}[/success]", border_style="success"))
                         else:
-                            self.console.print(Panel(f"[error]Failed to link with {vm_name}[/error]\nCheck if Guest Additions are installed and credentials are correct.", border_style="error"))
+                            self.console.print(Panel(f"[error]Failed to link with {vm_name}[/error]", border_style="error"))
                     continue
-
                 elif user_input.lower() == "/suggest":
-                    self.console.print(Panel("[bold cyan]Analyzing mission telemetry... generating next tactical steps.[/bold cyan]", border_style="cyan"))
-                    response_text = self._stream_response(self.agent.suggest_next_steps())
-                    self.console.print()
+                    self.console.print(Panel("[bold cyan]Analyzing mission telemetry...[/bold cyan]", border_style="cyan"))
+                    self._handle_interaction(user_input)
                     continue
-
                 elif user_input.lower() == "/bridge":
                     self.console.print(Panel("[bold cyan]Neural Bridge Architect rising...[/bold cyan]", border_style="cyan"))
                     result = self.agent.setup_neural_bridge()
                     self.console.print(result)
-                    self.console.print()
                     continue
+
                 self._handle_interaction(user_input)
 
             except (KeyboardInterrupt, EOFError):
@@ -240,9 +326,6 @@ class RoninTerminal:
 
     def _show_help(self):
         """Show available CLI commands."""
-        from rich.table import Table
-        
-        # Responsive table: hide padding if narrow
         table = Table(
             title="Ronin-V Elite CLI Commands", 
             border_style="panel.border",
@@ -250,105 +333,60 @@ class RoninTerminal:
         )
         table.add_column("Command", style="cyan", no_wrap=True)
         table.add_column("Description", style="white")
-
-        table.add_row("/auto", "Engage Autonomous Engine (Zero-Prompt Mode)")
-        table.add_row("/manual", "Override to Manual Authorization mode")
-        table.add_row("/bridge", "Automate Master-Guest Bridge Setup")
-        table.add_row("/link", "Connect to a VirtualBox VM (Kali/Linux)")
-        table.add_row("/recon", "Switch to RECON Sub-Agent (Discovery focus)")
-        table.add_row("/audit", "Switch to AUDIT Sub-Agent (Code scanning focus)")
-        table.add_row("/vibe", "Switch to VIBE Sub-Agent (Scaffolding focus)")
+        table.add_row("/auto", "Engage Autonomous Engine")
+        table.add_row("/manual", "Override to Manual mode")
+        table.add_row("/bridge", "Automate Neural Bridge Setup")
+        table.add_row("/link", "Connect to a VirtualBox VM")
+        table.add_row("/recon", "Switch to RECON role")
+        table.add_row("/audit", "Switch to AUDIT role")
+        table.add_row("/vibe", "Switch to VIBE role")
         table.add_row("────────────────", "────────────────────────────────────────")
-        table.add_row("/status", "System diagnostic & Environment check")
-        table.add_row("/model", "Display active LLM configuration")
-        table.add_row("/clear, cls", "Clear screen and reset session RAM")
-        table.add_row("/help", "Show this mastery manual")
+        table.add_row("/status", "System diagnostic check")
+        table.add_row("/model", "Display active LLM config")
+        table.add_row("/clear", "Clear screen and reset context")
+        table.add_row("/help", "Show this manual")
         table.add_row("exit, quit", "Shutdown the AI agent")
-
         self.console.print("\n")
         self.console.print(table)
         self.console.print("\n")
 
     def _handle_interaction(self, user_input: str):
-        """Handle interaction turn. Uses autonomous loop if auto_mode is ON."""
-        self.console.print()
-        
+        """Handle turn. Simplified for modern terminal stability."""
         if self.agent.auto_mode:
-            # Autonomous Path: Run Plan-Act-Observe loop
-            self.console.print("[ronin.name]CLI AI Agent [AUTO]:[/ronin.name]")
+            self.console.print(Panel(f"[bold green]Mission Initiated:[/bold green] {user_input}", border_style="success"))
             
-            # Responsive sizing: don't exceed console width
-            panel_width = min(60, self.console.width - 4)
-            
-            # Use a Group to combine the Thought Panel (with Spinner) and the actual streamed Output
-            status_panel = Panel(Spinner("dots", text="Agent initializing autonomous sequence..."), border_style="cyan", width=panel_width)
-            live = Live(status_panel, refresh_per_second=15, console=self.console)
-            live.start()
-            
-            log_buffer = [] # Local buffer for current execution logs
-            
-            def update_status(msg):
-                # Detect if this is a log line or a strategy status
-                is_log = not msg.startswith("Step ") and not "Mission Success" in msg and not "Turn complete" in msg
-                
-                if is_log:
-                    log_buffer.append(f"[dim]>[/dim] {msg}")
-                    if len(log_buffer) > 8: log_buffer.pop(0) # Keep last 8 lines for readability
-                else:
-                    log_buffer.clear() # Clear logs when moving to a new thinking phase
-                
-                # Top Panel: Tactical Strategy
-                strategy_panel = Panel(Spinner("dots", text=msg), border_style="cyan", title="Autonomous Engine", width=panel_width)
-                
-                # Bottom Panel: Real-time Execution Logs (Only shown if logs exist)
-                elements = [strategy_panel]
-                if log_buffer:
-                    log_panel = Panel("\n".join(log_buffer), title="[bold yellow]Mission Logs[/bold yellow]", border_style="yellow", width=panel_width)
-                    elements.append(log_panel)
-                
-                # Streamed AI Response
-                if response_text.strip():
-                    elements.append(Markdown(response_text))
-                
-                live.update(Group(*elements))
-            
-            # Execute the loop
-            response_text = ""
             try:
-                for chunk in self.agent.run_autonomous_loop(user_input, status_callback=update_status):
-                    response_text += chunk
-                    # Update live display with new text segment
-                    pass # Keep the 'Step X/Y' status visible during streaming
+                # Use a simpler status layout
+                with self.console.status("[bold cyan]Agent is executing mission...", spinner="bouncingBar") as status:
+                    def status_callback(msg):
+                        status.update(f"[bold cyan]{msg}[/bold cyan]")
+                    
+                    # Run the loop and print chunks directly
+                    for chunk in self.agent.run_autonomous_loop(user_input, status_callback=status_callback):
+                        # Some chunks are observations (Rich markup), some are LLM text.
+                        # We print them directly to the console for maximum stability.
+                        self.console.print(chunk, end="")
             except KeyboardInterrupt:
                 self.agent.stop_signal = True
-                self.console.print("\n[warning]Force Stop: Autonomous loop terminated.[/warning]")
-            finally:
-                live.stop()
-                
+                self.console.print("\n[warning]Force Stop engaged.[/warning]")
+            except Exception as e:
+                self.console.print(f"\n[error]Sentinel Critical Breach:[/error] {str(e)}")
             self.console.print()
         else:
-            # Manual Path: Normal chat + permission prompts
             response_text = self._stream_response(self.agent.chat(user_input))
             self.console.print()
-
             commands = self.agent.extract_commands(response_text)
             for cmd in commands:
                 self._prompt_and_execute(cmd)
 
     def _stream_response(self, text_generator: Generator[str, None, None]) -> str:
-        """Stream text to the terminal and return the full string, hiding <think> tags."""
+        """Stream text to the terminal, hiding <think> tags."""
         full_text = ""
         think_text = ""
         is_thinking = False
-        has_started_output = False
         buffer = ""
-        
         self.console.print("\n[ronin.name]CLI AI Agent:[/ronin.name]")
-        
-        # Responsive sizing: don't exceed console width
         panel_width = min(42, self.console.width - 4)
-        
-        # Immediately display a moving aesthetic spinner while waiting for the model
         thinking_ui = Panel(Spinner("dots", text="Neural link initializing..."), border_style="dim", width=panel_width)
         live = Live(thinking_ui, refresh_per_second=15, console=self.console)
         live.start()
@@ -356,7 +394,6 @@ class RoninTerminal:
         try:
             for chunk in text_generator:
                 buffer += chunk
-                
                 while True:
                     if not is_thinking:
                         start_idx = buffer.find("<think>")
@@ -364,7 +401,7 @@ class RoninTerminal:
                             full_text += buffer[:start_idx]
                             buffer = buffer[start_idx + 7:]
                             is_thinking = True
-                            live.update(Panel(Spinner("dots", text="Neural link processing intents..."), border_style="dim", width=46))
+                            live.update(Panel(Spinner("dots", text="Neural link processing..."), border_style="dim", width=panel_width))
                             continue
                     else:
                         end_idx = buffer.find("</think>")
@@ -373,11 +410,9 @@ class RoninTerminal:
                             buffer = buffer[end_idx + 8:]
                             is_thinking = False
                             continue
-                            
                     break
                     
                 if not is_thinking:
-                    # Check if the end of the buffer might be part of a "<think>" tag
                     potential_tag = False
                     for i in range(1, 8):
                         if buffer.endswith("<think>"[:i]):
@@ -386,19 +421,13 @@ class RoninTerminal:
                     if not potential_tag:
                         full_text += buffer
                         buffer = ""
-                        # Only transition from spinner to markdown if actual content starts streaming
                         if full_text.strip():
-                            has_started_output = True
-                            
-                            # SMART SCROLLER: Only show the last N lines if it gets too big
                             display_text = full_text
                             lines = full_text.split('\n')
                             if len(lines) > 30:
                                 display_text = "...\n" + "\n".join(lines[-30:])
-                                
                             live.update(Markdown(display_text))
                 else:
-                    # Check for partial "</think>"
                     potential_tag = False
                     for i in range(1, 9):
                         if buffer.endswith("</think>"[:i]):
@@ -408,69 +437,36 @@ class RoninTerminal:
                         think_text += buffer
                         buffer = ""
                         
-            # Flush any remaining buffer when stream completes
             if not is_thinking and buffer:
                 full_text += buffer
                 if full_text.strip():
                     live.update(Markdown(full_text))
-                    
         finally:
             live.stop()
 
         if think_text.strip():
-            # Create a minimized visualization of the thought process
             tokens = len(think_text.strip().split())
-            self.console.print(f"[dim italic]↳ Internal analysis completed (~{tokens} thought tokens).[/dim italic]")
-
+            self.console.print(f"[dim italic]↳ Analysis complete (~{tokens} tokens).[/dim italic]")
         return full_text
 
     def _prompt_and_execute(self, cmd_info: dict):
-        """Ask user to confirm execution, then run if approved."""
+        """Ask user to confirm execution and run."""
         executor = cmd_info["executor"]
         code = cmd_info["code"]
-
-        self.console.print(Panel(
-            f"[{'cyan' if executor == 'powershell' else 'yellow'}]{code}[/]",
-            title=f"Proposed Action ({executor.upper()})",
-            border_style="warning"
-        ))
-
-        # Ask for confirmation
-        should_run = Confirm.ask(f"[warning]Execute this {executor} code?[/warning]", default=True)
-        
-        if not should_run:
-            self.console.print("[info]Skipped execution.[/info]\n")
-            return
-
-        # Execute
-        with self.console.status(f"[bold green]Executing {executor} command...", spinner="dots"):
-            if executor == "powershell":
-                result = self.agent.execute_powershell(code)
-            elif executor == "bash":
-                result = self.agent.execute_bash(code)
-            elif executor == "vbox":
-                result = self.agent.execute_vbox(code)
+        self.console.print(Panel(code, title=f"Action ({executor.upper()})", border_style="warning"))
+        if Confirm.ask(f"[warning]Execute this {executor} code?[/warning]", default=True):
+            with self.console.status(f"[bold green]Running...", spinner="dots"):
+                if executor == "powershell": result = self.agent.execute_powershell(code)
+                elif executor == "bash": result = self.agent.execute_bash(code)
+                elif executor == "vbox": result = self.agent.execute_vbox(code)
+                else: result = self.agent.execute_python(code)
+            if result.success:
+                self.console.print("[success]Success[/success]")
+                out = result.stdout.strip()
+                if len(out) > 1000: out = out[:1000] + "..."
+                if out: self.console.print(out)
             else:
-                result = self.agent.execute_python(code)
-
-        # Show result
-        if result.success:
-            self.console.print("[success]Execution successful[/success]")
-            # Print output truncated if too long
-            out = result.stdout.strip()
-            if len(out) > 1000:
-                out = out[:1000] + "\n... [Output truncated]"
-            if out:
-                self.console.print(f"[{'cyan' if executor == 'powershell' else 'yellow'}]{out}[/]")
-        else:
-            self.console.print(f"[error]Execution failed (Exit Code: {result.exit_code})[/error]")
-            if result.stderr:
-                self.console.print(f"[error]{result.stderr.strip()}[/error]")
-
-        # Handle Analysis Automatically
-        if not result.success:
-            self.console.print("[warning]Automatically analyzing failure context...[/warning]\n")
-            self._stream_response(self.agent.analyze_result(code, result))
-            self.console.print()
-        else:
-            self.console.print()
+                self.console.print(f"[error]Failed ({result.exit_code})[/error]")
+                if result.stderr: self.console.print(result.stderr.strip())
+                self._stream_response(self.agent.analyze_result(code, result))
+        self.console.print()

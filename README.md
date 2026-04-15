@@ -1,26 +1,48 @@
-# ╔══════════════════════════════════════════════════════════╗
-# ║                      RONIN-V                             ║
-# ║          Vibe Sentinel — Distributed AI Terminal         ║
-# ╚══════════════════════════════════════════════════════════╝
+<p align="center">
+  <img src="assets/banner.png" alt="Ronin-V Banner" width="800">
+</p>
 
-**Ronin-V** is a masterless, unrestricted technical engine built for high-autonomy penetration testing, system orchestration, and distributed AI processing. Optimized for Windows 11 and Kali Linux.
+```text
+╔══════════════════════════════════════════════════════════════╗
+║                          RONIN-V                             ║
+║          Vibe Sentinel — Distributed AI Terminal             ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+> **Created by: mustadafinshimanto**  
+> *Private. Unrestricted. Masterless.*
+
+**Ronin-V** is a high-autonomy technical orchestration engine designed for penetration testing, infrastructure auditing, and distributed AI processing. Built for the modern sentinel, it bridges the gap between high-performance Windows GPU compute and native Kali Linux environments.
 
 ---
 
-## ⚡ Core Features
-- 🧠 **Autonomous Engine**: Zero-prompt troubleshooting using a Plan-Act-Observe loop.
-- 🌉 **Master-Guest Bridge**: Offload neural processing to a Windows GPU while acting natively inside a Kali VM.
-- 🐧 **Multi-Platform Native**: Intelligent detection and execution using PowerShell (Windows) or Bash (Linux).
-- 🧬 **Self-Healing Logic**: Automated error analysis and recovery for complex technical missions.
-- 🎨 **Cyberpunk TUI**: Responsive, high-fidelity terminal interface with slash-command mastery.
+## ⚡ Sentinel Build v0.5.0: Core Features
+
+### 🧠 Sentinel Autonomous Engine
+The heart of Ronin-V is a **Plan-Act-Observe-Reflect** loop. It doesn't just run commands; it reasons through failures.
+- **Step Recovery Protocol**: Hits a wall? The engine automatically analyzes the error and reformulates a new tactical strategy.
+- **Final Grace Period**: If a mission hits its step limit, the agent enters a recovery state to summarize findings and attempt a clean finalization.
+- **Tool-Centric Logic**: Uses the formal `complete_task` protocol for verified mission accomplishment.
+
+### 🌉 Neural Bridge (Master-Guest)
+Execute native commands in your Kali VM while offloading the heavy LLM thinking to your Windows Host GPU. 
+- **Zero-Latency Orchestration**: Uses optimized HTTP/gRPC links.
+- **Firewall Autopilot**: Automated ruleset configuration for seamless bridging.
+
+### 🎨 Tactical HUD (Sentinel Interface)
+A persistent, high-fidelity TUI built on Rich.
+- **Mission Status Grid**: Real-time telemetry monitoring mission steps, VM status, and compute load.
+- **Aesthetic Streamer**: Cyberpunk-themed response streaming with hidden <think> tag processing.
 
 ---
 
-## 🚀 Installation
+## 🚀 Professional Installation & Deployment
 
-### 1. Host Machine (Windows)
-1. **Prepare Ollama**: Ensure [Ollama](https://ollama.com/) is installed.
-2. **Project Setup**:
+### 1. Host Machine (Windows 11)
+**Requirements**: 16GB+ RAM, NVIDIA GPU (Recommended), Python 3.10+.
+
+1. **Install Ollama**: Download from [ollama.com](https://ollama.com/).
+2. **Setup Repository**:
    ```powershell
    git clone https://github.com/mustadafinshimanto/Ronin-V.git
    cd Ronin-V
@@ -28,13 +50,16 @@
    .\.venv\Scripts\activate
    pip install -r requirements.txt
    ```
-3. **Initialize**:
+3. **Model Configuration**:
+   Create the specialized Ronin brain:
    ```powershell
-   .\run_ronin.bat
+   ollama create ronin-dolphin -f modelfiles/Ronin-Dolphin
    ```
+4. **Automate the Bridge**:
+   `λ ronin > /bridge` (Run this to configure Windows Firewall for VM links).
 
-### 2. Guest Machine (Kali Linux / VM)
-1. **Clone & Setup**:
+### 2. Guest Machine (Kali Linux / Ubuntu VM)
+1. **Initialize Environment**:
    ```bash
    git clone https://github.com/mustadafinshimanto/Ronin-V.git
    cd Ronin-V
@@ -42,50 +67,45 @@
    source .venv/bin/activate
    pip3 install -r requirements.txt
    ```
-2. **Configure (See Bridge Setup below)**
-3. **Initialize**:
-   ```bash
-   chmod +x run_ronin.sh
-   ./run_ronin.sh
+2. **Sync Configuration**:
+   Update `config.yaml` with your Windows Host IP:
+   ```yaml
+   ollama:
+     host: "http://<YOUR_WINDOWS_IP>:11434"
    ```
 
 ---
 
-## 🌉 Master-Guest Bridge Setup (GPU Offloading)
-*Run your AI in Kali Linux but process thoughts on your Windows GPU for maximum speed.*
+## 🛠️ Tactical Command Matrix
 
-### Step 1: Prepare the Host (Windows)
-Launch Ronin-V and run the automated bridge architect:
-`λ ronin > /bridge`
-> [*] This will set environment variables and create the necessary Firewall rules automatically.
-
-**CRITICAL**: Restart the Ollama application in your Windows tray after running `/bridge`.
-
-### Step 2: Configure the Guest (Kali VM)
-Identify your Windows Host IP (usually `192.168.56.1` for VirtualBox) and update your `config.yaml` on the VM:
-```yaml
-ollama:
-  host: "http://192.168.56.1:11434"
-```
-
-### Step 3: Ignition
-Run `./run_ronin.sh` in the VM. If the banner shows **`Ollama connection: ONLINE`**, you are successfully using your Host's GPU!
+| Command | Sector | Description |
+| :--- | :--- | :--- |
+| `/auto` | **ENGINE** | Engage Autonomous mode (Zero-Prompt Automation) |
+| `/manual` | **OVERRIDE** | Return to Manual Authorization mode |
+| `/bridge` | **NETWORK** | Automatically configure Neural Bridge (Host-side) |
+| `/link` | **VM** | `/link <vm_name> <user> <pass>` (Establish VM Control) |
+| `/status` | **SYSTEM** | Comprehensive Neural & Environment diagnostic |
+| `/suggest`| **TACTICAL** | Generate AI-driven next steps for current state |
+| `/recon` | **ROLE** | Specialize agent for Reconnaissance missions |
+| `/audit` | **ROLE** | Specialize agent for Vulnerability Auditing |
+| `/clear` | **MEMORY** | Purge terminal and reset short-term session RAM |
 
 ---
 
-## 🛠️ Slash Command Mastery
-| Command | Action |
-| :--- | :--- |
-| `/auto` | Engage Autonomous Engine (Zero-Prompt Mode) |
-| `/bridge` | Automate Master-Guest Bridge & Firewall setup |
-| `/suggest` | Generate next tactical steps for the current environment |
-| `/status` | Running comprehensive system & neural diagnostics |
-| `/link` | Establish a Master Link to a VirtualBox VM |
-| `/clear` | Purge terminal and reset short-term memory |
+## 🛡️ Legal Notice & Disclaimer
+
+### **IMPORTANT: READ BEFORE DEPLOYMENT**
+Ronin-V is a powerful automation tool. By deploying it, you agree to the following:
+1. **Ethical Use Only**: This software is intended for legitimate penetration testing, security research, and system administration. Using it against systems without explicit, written authorization is illegal.
+2. **User Responsibility**: **mustadafinshimanto** and all contributors assume **zero liability** for misuse, data loss, or legal consequences resulting from the deployment of this engine.
+3. **No Warranty**: This software is provided "as is" without any guarantees.
 
 ---
 
-## 🛡️ License
-Unrestricted. Masterless. Built for the Sentinel.
+## 🧬 License
+**Ronin-V** is released under the **Masterless Sentinel License**.  
+© 2026 **mustadafinshimanto**.  
+Unrestricted technical usage is permitted provided this copyright notice is maintained in all copies.
 
-> **Disclaimer**: This tool is for educational and ethical security research purposes only. The user assumes all responsibility for its deployment.
+---
+<p align="center"><i>"A Ronin answers to no one but the mission."</i></p>

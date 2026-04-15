@@ -1,21 +1,16 @@
 import subprocess
 import os
 
-class CommandResult:
-    def __init__(self, success: bool, stdout: str, stderr: str, exit_code: int):
-        self.success = success
-        self.stdout = stdout
-        self.stderr = stderr
-        self.exit_code = exit_code
+from core.types import CommandResult
 
 class BashExecutor:
     """
     Native Linux/Bash command executor for Ronin-V.
     """
     def __init__(self, config: dict):
-        self.config = config.get("executors", {}).get("bash", {})
-        self.timeout = self.config.get("timeout", 60)
-        self.shell = self.config.get("shell", "/bin/bash")
+        exec_config = config.get("executors", {}).get("bash", {})
+        self.timeout = exec_config.get("timeout", 60)
+        self.shell = exec_config.get("shell", "/bin/bash")
 
     def test_connection(self) -> bool:
         """Verify that bash is available and working."""
@@ -44,7 +39,6 @@ class BashExecutor:
 
             # Monitor the process and yield status
             while True:
-                # Check for output
                 line = process.stdout.readline()
                 if not line and process.poll() is not None:
                     break
@@ -68,17 +62,20 @@ class BashExecutor:
             if stderr_out:
                 full_stderr.append(stderr_out)
 
+            exit_code = process.returncode if process.returncode is not None else 0
             return CommandResult(
-                success=(process.returncode == 0),
+                command=command,
+                exit_code=exit_code,
                 stdout="".join(full_stdout),
                 stderr="".join(full_stderr),
-                exit_code=process.returncode
+                success=(exit_code == 0)
             )
             
         except Exception as e:
             return CommandResult(
-                success=False,
+                command=command,
+                exit_code=1,
                 stdout="",
                 stderr=str(e),
-                exit_code=1
+                success=False
             )

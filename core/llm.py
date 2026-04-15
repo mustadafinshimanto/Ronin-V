@@ -158,20 +158,31 @@ class RoninLLM:
 
     def _stream_chat(self, messages: list[dict], options: dict) -> Generator[str, None, None]:
         """Internal streaming chat implementation."""
-        stream = self.client.chat(
-            model=self.model_name,
-            messages=messages,
-            options=options,
-            stream=True,
-            keep_alive=self.keep_alive,
-        )
-        for chunk in stream:
-            if isinstance(chunk, dict):
-                content = chunk.get("message", {}).get("content", "")
-            else:
-                content = getattr(getattr(chunk, "message", None), "content", "")
-            if content:
-                yield content
+        try:
+            stream = self.client.chat(
+                model=self.model_name,
+                messages=messages,
+                options=options,
+                stream=True,
+                keep_alive=self.keep_alive,
+            )
+            for chunk in stream:
+                if not chunk: continue
+                
+                if isinstance(chunk, dict):
+                    # Standard dict response
+                    content = chunk.get("message", {}).get("content", "")
+                elif hasattr(chunk, "message"):
+                    # Object response (newer SDK versions)
+                    content = getattr(chunk.message, "content", "")
+                else:
+                    # Raw string fallback
+                    content = str(chunk)
+
+                if content:
+                    yield content
+        except Exception as e:
+            yield f"\n[error]Neural Stream Error: {str(e)}[/error]"
 
     def one_shot(self, prompt: str) -> str:
         """

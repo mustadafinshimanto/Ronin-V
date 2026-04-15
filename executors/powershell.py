@@ -10,29 +10,7 @@ import os
 from dataclasses import dataclass
 
 
-@dataclass
-class CommandResult:
-    """Result of a command execution."""
-    command: str
-    exit_code: int
-    stdout: str
-    stderr: str
-    timed_out: bool = False
-
-    @property
-    def success(self) -> bool:
-        return self.exit_code == 0 and not self.timed_out
-
-    def __str__(self) -> str:
-        output = f"Exit Code: {self.exit_code}"
-        if self.timed_out:
-            output += " (TIMED OUT)"
-        if self.stdout.strip():
-            output += f"\n\n{self.stdout.strip()}"
-        if self.stderr.strip():
-            output += f"\n\nErrors:\n{self.stderr.strip()}"
-        return output
-
+from core.types import CommandResult
 
 class PowerShellExecutor:
     """
@@ -53,7 +31,7 @@ class PowerShellExecutor:
     def execute(self, command: str, timeout: int | None = None, cwd: str | None = None, status_callback=None) -> CommandResult:
         """Execute a PowerShell command with real-time feedback."""
         if not self.enabled:
-            return CommandResult(command=command, exit_code=-1, stdout="", stderr="PowerShell executor is disabled in config.")
+            return CommandResult(command=command, exit_code=-1, stdout="", stderr="PowerShell executor is disabled in config.", success=False)
 
         timeout = timeout or self.timeout
         try:
@@ -87,26 +65,21 @@ class PowerShellExecutor:
             if stderr_out:
                 full_stderr.append(stderr_out)
 
+            exit_code = process.returncode if process.returncode is not None else 0
             return CommandResult(
                 command=command,
-                exit_code=process.returncode,
+                exit_code=exit_code,
                 stdout="".join(full_stdout),
                 stderr="".join(full_stderr),
+                success=(exit_code == 0)
             )
 
         except Exception as e:
-            return CommandResult(command=command, exit_code=-1, stdout="", stderr=f"Execution error: {str(e)}")
+            return CommandResult(command=command, exit_code=-1, stdout="", stderr=f"Execution error: {str(e)}", success=False)
 
     def execute_script(self, script_path: str, timeout: int | None = None) -> CommandResult:
         """
         Execute a .ps1 script file.
-        
-        Args:
-            script_path: Path to the PowerShell script
-            timeout: Override default timeout
-            
-        Returns:
-            CommandResult
         """
         command = f"& '{script_path}'"
         return self.execute(command, timeout=timeout)

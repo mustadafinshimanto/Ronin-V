@@ -1,14 +1,7 @@
-import subprocess
 import os
-from dataclasses import dataclass
-from typing import List, Optional
-
-@dataclass
-class VBoxResult:
-    success: bool
-    stdout: str
-    stderr: str
-    exit_code: int
+import subprocess
+from typing import List
+from core.types import CommandResult
 
 class VBoxExecutor:
     """
@@ -48,10 +41,9 @@ class VBoxExecutor:
         result = self.execute(vm_name, username, password, "whoami")
         return result.success
 
-    def execute(self, vm_name: str, username: str, password: str, command: str, args: List[str] = []) -> VBoxResult:
+    def execute(self, vm_name: str, username: str, password: str, command: str, args: List[str] = []) -> CommandResult:
         """
         Execute a command in the guest VM.
-        VBoxManage guestcontrol <vm> run --username <user> --password <pass> --wait-stdout -- <cmd>
         """
         try:
             full_cmd = [
@@ -69,18 +61,32 @@ class VBoxExecutor:
                 timeout=self.config.get("timeout", 60)
             )
 
-            return VBoxResult(
-                success=(process.returncode == 0),
+            return CommandResult(
+                command=command,
+                exit_code=process.returncode,
                 stdout=process.stdout,
                 stderr=process.stderr,
-                exit_code=process.returncode
+                success=(process.returncode == 0)
             )
         except subprocess.TimeoutExpired:
-            return VBoxResult(False, "", "Command timed out", -1)
+            return CommandResult(
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr="Command timed out",
+                success=False,
+                timed_out=True
+            )
         except Exception as e:
-            return VBoxResult(False, "", str(e), -1)
+            return CommandResult(
+                command=command,
+                exit_code=-1,
+                stdout="",
+                stderr=str(e),
+                success=False
+            )
 
-    def copy_to_guest(self, vm_name: str, username: str, password: str, source: str, destination: str) -> VBoxResult:
+    def copy_to_guest(self, vm_name: str, username: str, password: str, source: str, destination: str) -> CommandResult:
         """Copy a file from host to guest."""
         try:
             full_cmd = [
@@ -98,11 +104,18 @@ class VBoxExecutor:
                 timeout=self.config.get("timeout", 120)
             )
 
-            return VBoxResult(
-                success=(process.returncode == 0),
+            return CommandResult(
+                command=f"copy {source} to {destination}",
+                exit_code=process.returncode,
                 stdout=process.stdout,
                 stderr=process.stderr,
-                exit_code=process.returncode
+                success=(process.returncode == 0)
             )
         except Exception as e:
-            return VBoxResult(False, "", str(e), -1)
+            return CommandResult(
+                command=f"copy {source} to {destination}",
+                exit_code=-1,
+                stdout="",
+                stderr=str(e),
+                success=False
+            )

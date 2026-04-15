@@ -14,9 +14,10 @@ from pathlib import Path
 from core.llm import RoninLLM
 from core.memory import RoninMemory
 from core.prompts import RONIN_SYSTEM_PROMPT, OBSERVE_PROMPT, ERROR_RECOVERY_PROMPT, SUGGEST_PROMPT
-from executors.powershell import PowerShellExecutor, CommandResult
+from core.types import CommandResult
+from executors.powershell import PowerShellExecutor
 from executors.python_exec import PythonExecutor
-from executors.vbox import VBoxExecutor, VBoxResult
+from executors.vbox import VBoxExecutor
 from executors.bash import BashExecutor
 import platform
 
@@ -56,17 +57,10 @@ class RoninAgent:
         # VM Link State
         self.linked_vm = None  # {name: "", user: "", pass: ""}
         
-        # Session Persistence: Try to resume last session if available
-        recent = self.memory.get_recent_sessions(limit=1)
-        if recent:
-            self.session_id = recent[0]["session_id"]
-            # Load history back into short-term RAM window
-            history = self.memory.get_session_history(self.session_id)
-            for msg in history:
-                self.memory.short_term.append({"role": msg["role"], "content": msg["content"]})
-        else:
-            self.session_id = str(uuid.uuid4())[:8]
-            self.memory.start_session(self.session_id)
+        # Session Management: Always start fresh for peak reliability
+        self.session_id = str(uuid.uuid4())[:8]
+        self.memory.start_session(self.session_id)
+        self.memory.clear_short_term()
 
         # Load local project context (.ronin_ctx) if it exists
         self.project_context = self._load_project_context()
@@ -257,88 +251,58 @@ class RoninAgent:
     # ─── Command Execution ───
 
     def execute_powershell(self, command: str, status_callback=None) -> CommandResult:
-        """
-        Execute a PowerShell command and log it.
-        """
-        result = self.ps_executor.execute(command, status_callback=status_callback)
-
-        # Log the execution to memory
-        self.memory.add_message(
-            "assistant",
-            f"[EXECUTED PowerShell] `{command}`\nExit: {result.exit_code}\n{result.stdout[:500]}",
-            self.session_id,
-            metadata={"type": "execution", "executor": "powershell", "exit_code": result.exit_code}
-        )
-
-        return result
+        """Execute a PowerShell command with safe error handling."""
+        if not command.strip():
+            return CommandResult(command, -1, "", "Empty command received.", False)
+        try:
+            return self.ps_executor.execute(command, status_callback=status_callback)
+        except Exception as e:
+            return CommandResult(command, -1, "", f"PowerShell Wrapper Error: {str(e)}", False)
 
     def execute_python(self, code: str) -> CommandResult:
-        """
-        Execute Python code and log it.
-        """
-        result = self.py_executor.execute(code)
-
-        self.memory.add_message(
-            "assistant",
-            f"[EXECUTED Python] Exit: {result.exit_code}\n{result.stdout[:500]}",
-            self.session_id,
-            metadata={"type": "execution", "executor": "python", "exit_code": result.exit_code}
-        )
-
-        return result
+        """Execute Python code with safe error handling."""
+        if not code.strip():
+            return CommandResult(code, -1, "", "Empty script received.", False)
+        try:
+            return self.py_executor.execute(code)
+        except Exception as e:
+            return CommandResult(code, -1, "", f"Python Wrapper Error: {str(e)}", False)
 
     def execute_bash(self, command: str, status_callback=None) -> CommandResult:
-        """
-        Execute a native Bash command on Linux.
-        """
-        result = self.bash_executor.execute(command, status_callback=status_callback)
-
-        # Log to memory
-        self.memory.add_message(
-            "assistant",
-            f"[EXECUTED Bash] `{command}`\nExit: {result.exit_code}\n{result.stdout[:500]}",
-            self.session_id,
-            metadata={"type": "execution", "executor": "bash", "exit_code": result.exit_code}
-        )
-        return result
+        """Execute a native Bash command with safe error handling."""
+        if not command.strip():
+            return CommandResult(command, -1, "", "Empty command received.", False)
+        try:
+            return self.bash_executor.execute(command, status_callback=status_callback)
+        except Exception as e:
+            return CommandResult(command, -1, "", f"Bash Wrapper Error: {str(e)}", False)
 
     def execute_vbox(self, command: str) -> CommandResult:
-        """
-        Execute a command on the linked VirtualBox VM.
-        """
+        """Execute a command in the linked VM with safe error handling."""
         if not self.linked_vm:
-            return CommandResult(
-                success=False,
-                stdout="",
-                stderr="Error: No VirtualBox VM is currently linked. Use /link <vm> <user> <pass> first.",
-                exit_code=1
+            return CommandResult(command, -1, "", "No VM linked. Use /vbox link first.", False)
+        if not command.strip():
+            return CommandResult(command, -1, "", "Empty command received.", False)
+        try:
+            return self.vbox_executor.execute(
+                self.linked_vm["name"],
+                self.linked_vm["user"],
+                self.linked_vm["pass"],
+                command
             )
-        
-        # Call the native vbox executor
-        v_res = self.vbox_executor.execute(
-            self.linked_vm["name"],
-            self.linked_vm["user"],
-            self.linked_vm["pass"],
-            command
-        )
+        except Exception as e:
+            return CommandResult(command, -1, "", f"VBox Wrapper Error: {str(e)}", False)
 
-        # Map VBoxResult back to the standard CommandResult for the TUI
-        result = CommandResult(
-            success=v_res.success,
-            stdout=v_res.stdout,
-            stderr=v_res.stderr,
-            exit_code=v_res.exit_code
+    def complete_task(self, final_answer: str) -> CommandResult:
+        """Sentinel Termination Tool: Correctly marks a mission as accomplished."""
+        self.stop_signal = True
+        return CommandResult(
+            command="complete_task",
+            exit_code=0,
+            stdout=f"MISSION ACCOMPLISHED: {final_answer}",
+            stderr="",
+            success=True
         )
-
-        # Log the execution to memory
-        self.memory.add_message(
-            "assistant",
-            f"[EXECUTED Kali VM] `{command}`\nExit: {result.exit_code}\n{result.stdout[:500]}",
-            self.session_id,
-            metadata={"type": "execution", "executor": "vbox", "exit_code": result.exit_code}
-        )
-
-        return result
 
     def analyze_result(self, command: str, result: CommandResult, autonomous: bool = False) -> Generator[str, None, None]:
         """
@@ -355,7 +319,7 @@ class RoninAgent:
 
     def run_autonomous_loop(self, user_input: str, status_callback=None) -> Generator[str, None, None]:
         """
-        The core Autonomous Engine loop.
+        The core Autonomous Engine loop (Sentinel Build).
         Plan -> Act -> Observe -> Reflect -> Repeat until done or max steps reached.
         """
         self.stop_signal = False
@@ -377,25 +341,13 @@ class RoninAgent:
             commands = self.extract_commands(full_response)
             
             if not commands:
-                # No more commands, check if the goal is complete
-                if "✅" in full_response:
-                    if status_callback:
-                        status_callback("Mission Success ✅")
-                    break
-                else:
-                    # SELF-CORRECTION: If the AI is just talking without acting, force it to give a command
-                    # However, if it's the very first step and the AI just returned a greeting, don't force a loop.
-                    if step_count == 1 and len(full_response) < 300 and any(greeting in full_response.lower() for greeting in ["hello", "hi", "how can i assist"]):
-                        if status_callback:
-                            status_callback("Turn complete. Awaiting input.")
-                        break
-
-                    if status_callback:
-                        status_callback(f"Step {step_count}/{self.max_steps}: [warning]Passive reasoning detected. Forcing action...[/warning]")
-                    
-                    # Add a hidden directive to force a command or finalization
-                    self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Provide a code block to proceed or finalize with ✅.", self.session_id)
-                    continue # Re-run this step with the new instruction context
+                # No more commands, check for graceful finalization
+                if status_callback:
+                    status_callback(f"Step {step_count}/{self.max_steps}: [warning]Passive reasoning detected. Forcing action...[/warning]")
+                
+                # Add a hidden directive to force a command or finalization
+                self.memory.add_message("user", "MISSION UPDATE: Your last response contained no executable commands. Use `complete_task` to finalize your mission or provide a code block to proceed.", self.session_id)
+                continue
                     
             # 3. Execute commands (In Auto-Mode, we just run them)
             for cmd in commands:
@@ -410,29 +362,55 @@ class RoninAgent:
                     result = self.execute_bash(cmd["code"], status_callback=status_callback)
                 elif cmd["executor"] == "vbox":
                     result = self.execute_vbox(cmd["code"])
-                else:
+                elif cmd["executor"] == "python":
                     result = self.execute_python(cmd["code"])
+                elif cmd["executor"] == "complete_task":
+                    result = self.complete_task(cmd["code"])
+                    if status_callback:
+                        status_callback("Mission Accomplished ✅")
                 
-                # 4. Feed back to LLM (Observation)
-                if status_callback:
-                    status_callback("Analyzing results...")
+                # 4. Show the observation to the user and feed it back for the next turn
+                observation_text = f"\n\n[bold cyan]─── Observation (Step {step_count}) ───[/bold cyan]\n"
+                observation_text += f"[dim]Exit Code: {result.exit_code}[/dim]\n"
+                if result.stdout.strip():
+                    observation_text += f"[success]STDOUT:[/success] {result.stdout[:500]}\n"
+                if result.stderr.strip():
+                    observation_text += f"[error]STDERR:[/error] {result.stderr[:500]}\n"
                 
-                analysis_text = ""
-                # We consume the analysis generator and yield it to the UI
-                for chunk in self.analyze_result(cmd["code"], result, autonomous=True):
-                    analysis_text += chunk
-                    yield chunk
+                yield observation_text
                 
-                # For the next turn, the 'input' is the AI's own analysis of the result
-                current_input = analysis_text
-                
-            # If the user input was just a string, future loops use the analysis
+                # Update input for the next loop iteration
+                current_input = f"OBSERVATION: {result.stdout[:1000]}\nERRORS: {result.stderr[:500]}\n\nAnalyze and provide the NEXT command or call `complete_task`."
+
             if self.stop_signal:
-                yield "\n\n[warning]Autonomous loop interrupted by operator.[/warning]"
                 break
-                
-        if step_count >= self.max_steps:
-             yield f"\n\n[error]Max steps ({self.max_steps}) reached. Safety halt engaged.[/error]"
+
+        # MISSION RECOVERY: If we reached max steps but didn't finish, try one last turn
+        if step_count >= self.max_steps and not self.stop_signal:
+             yield from self.execute_final_turn(status_callback)
+
+    def execute_final_turn(self, status_callback) -> Generator[str, None, None]:
+        """Gemini-Inspired Mission Recovery: Give the agent a final chance to summarize."""
+        if status_callback:
+            status_callback("[error]Max steps reached. Attempting Recovery Summary...[/error]")
+        
+        recovery_prompt = (
+            "MISSION LIMIT REACHED: You have reached the maximum allowed steps. "
+            "You MUST now provide a final summary of your findings and call `complete_task` "
+            "immediately. Do not attempt further commands."
+        )
+        
+        full_response = ""
+        for chunk in self.chat(recovery_prompt):
+            full_response += chunk
+            yield chunk
+            
+        commands = self.extract_commands(full_response)
+        for cmd in commands:
+            if cmd["executor"] == "complete_task":
+                self.complete_task(cmd["code"])
+                if status_callback:
+                    status_callback("Recovery Summary Complete ✅")
 
     # ─── Command Detection ───
 
@@ -441,6 +419,14 @@ class RoninAgent:
         Extract executable commands from the LLM's response.
         """
         commands = []
+
+        # Match completion signals like ✅ or MISSION ACCOMPLISHED
+        if "✅" in response or "MISSION ACCOMPLISHED" in response.upper() or "complete_task" in response.lower():
+            # Try to grab whatever text is around it as the final answer
+            answer_match = re.search(r"(?:MISSION ACCOMPLISHED|✅|complete_task)\s*:?\s*(.*)", response, re.IGNORECASE)
+            answer = answer_match.group(1).strip() if answer_match else "Goal achieved."
+            commands.append({"executor": "complete_task", "code": answer})
+            return commands # Completion takes precedence
 
         # Match ```powershell ... ``` blocks
         ps_pattern = r"```(?:powershell|ps1|ps)\s*(.*?)```"
@@ -476,21 +462,28 @@ class RoninAgent:
                 elif self.linked_vm:
                     commands.append({"executor": "vbox", "code": code})
                 else:
-                    # SMART ROUTER: Many 'bash' commands (ping, curl, ls) have PS aliases. 
-                    # Don't force WSL on a Windows user who doesn't use it.
+                    # SMART ROUTER: Strip sudo if on Windows as it's a common hallucination
+                    if platform.system() == "Windows":
+                        code = re.sub(r"^sudo\s+", "", code, flags=re.MULTILINE | re.IGNORECASE)
+                        # Fix common linux commands if possible
+                        code = code.replace("ls -la", "ls")
                     commands.append({"executor": "powershell", "code": code})
 
         # Match ``` (no tag) ... ``` blocks  (Fallback for sloppy LLMs)
         generic_pattern = r"```\s*(.*?)```"
         for match in re.finditer(generic_pattern, response, re.DOTALL):
-            # Check if this content is already captured by specific tags
             code = match.group(1).strip()
-            if any(code in [c["code"] for c in commands]):
+            # Check if this code has already been captured
+            if any(code == c["code"] for c in commands):
                 continue
             
             if code and not code.startswith("#"):
-                executor = "powershell" if platform.system() == "Windows" else "bash"
-                commands.append({"executor": executor, "code": code})
+                # Detection for complete_task inside generic block
+                if "complete_task" in code.lower():
+                    commands.append({"executor": "complete_task", "code": code})
+                else:
+                    executor = "powershell" if platform.system() == "Windows" else "bash"
+                    commands.append({"executor": executor, "code": code})
 
         return commands
 

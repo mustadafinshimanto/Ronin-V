@@ -13,7 +13,7 @@ from pathlib import Path
 
 from core.llm import RoninLLM
 from core.memory import RoninMemory
-from core.prompts import OBSERVE_PROMPT, ERROR_RECOVERY_PROMPT, SUGGEST_PROMPT
+from core.prompts import RONIN_SYSTEM_PROMPT, OBSERVE_PROMPT, ERROR_RECOVERY_PROMPT, SUGGEST_PROMPT
 from executors.powershell import PowerShellExecutor, CommandResult
 from executors.python_exec import PythonExecutor
 from executors.vbox import VBoxExecutor, VBoxResult
@@ -469,15 +469,22 @@ class RoninAgent:
         Build the message list for the LLM.
         """
         messages = []
+        
+        # 1. Base Identity (The most important context)
+        os_info = f"CURRENT OPERATING SYSTEM: {platform.system()} {platform.release()}"
+        messages.append({
+            "role": "system",
+            "content": f"{RONIN_SYSTEM_PROMPT}\n\n{os_info}"
+        })
 
-        # 1. Project-level context (.ronin_ctx) - Highest priority
+        # 2. Project-level context (.ronin_ctx)
         if self.project_context:
             messages.append({
                 "role": "system",
                 "content": f"LOCAL PROJECT CONTEXT (.ronin_ctx):\n{self.project_context}"
             })
 
-        # 2. Inject relevant memories as context (RAG)
+        # 3. Inject relevant memories as context (RAG)
         if memories:
             memory_text = "\n".join([
                 f"- [{m['timestamp'][:10]}] {m['content'][:200]}"
@@ -488,15 +495,10 @@ class RoninAgent:
                 "content": f"Relevant context from past conversations:\n{memory_text}"
             })
 
-        # 3. Add conversation history
+        # 4. Add conversation history
         context = self.memory.get_context()
-        if context and context[-1].get("role") == "user" and context[-1].get("content") == user_input:
-            messages.extend(context[:-1])
-        else:
-            messages.extend(context)
-
-        # 4. Add current user message
-        messages.append({"role": "user", "content": user_input})
+        # Filter duplicates if necessary
+        messages.extend(context)
 
         return messages
 

@@ -298,7 +298,7 @@ class RoninTerminal:
                     log_buffer.clear() # Clear logs when moving to a new thinking phase
                 
                 # Top Panel: Tactical Strategy
-                strategy_panel = Panel(Spinner("aesthetic", text=msg), border_color="cyan", title="Autonomous Engine", width=panel_width)
+                strategy_panel = Panel(Spinner("aesthetic", text=msg), border_style="cyan", title="Autonomous Engine", width=panel_width)
                 
                 # Bottom Panel: Real-time Execution Logs (Only shown if logs exist)
                 elements = [strategy_panel]

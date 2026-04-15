@@ -84,7 +84,8 @@ class RoninAgent:
         try:
             vms = self.vbox_executor.list_vms()
             for vm in vms:
-                if "kali" in vm["name"].lower():
+                name = vm["name"].lower()
+                if "kali" in name or "linux" in name:
                     # Attempt connection with default kali/kali
                     if self.vbox_executor.test_connection(vm["name"], "kali", "kali"):
                         self.linked_vm = {

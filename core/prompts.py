@@ -45,7 +45,8 @@ If the command failed, explain why and find a workaround.
 
 Command: {command}
 Exit Code: {exit_code}
-Output: {output}
+Output (STDOUT): {stdout}
+Errors (STDERR): {stderr}
 
 Be concise and actionable."""
 

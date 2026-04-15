@@ -56,7 +56,7 @@ def cli(debug):
         terminal = RoninTerminal(agent, config)
 
         # Start the UI
-        terminal.run()
+        terminal.run_loop()
     except Exception as e:
         print(f"\n[FATAL ERROR] {e}")
         import traceback

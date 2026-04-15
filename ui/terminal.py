@@ -289,7 +289,7 @@ class RoninTerminal:
                 for chunk in self.agent.run_autonomous_loop(user_input, status_callback=update_status):
                     response_text += chunk
                     # Update live display with new text segment
-                    update_status("Processing neural stream...") # Refresh visual state during streaming
+                    pass # Keep the 'Step X/Y' status visible during streaming
             except KeyboardInterrupt:
                 self.agent.stop_signal = True
                 self.console.print("\n[warning]Force Stop: Autonomous loop terminated.[/warning]")

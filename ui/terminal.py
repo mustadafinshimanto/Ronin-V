@@ -231,6 +231,8 @@ class RoninTerminal:
         self.print_banner()
         
         with self.console.status("[bold cyan]Synchronizing neural state...", spinner="bouncingBar"):
+            # Pre-load the model to ensure GPU is active and standby is gone
+            self.agent.llm.preload_model()
             status = self.agent.check_systems()
             
         self.print_system_status(status)

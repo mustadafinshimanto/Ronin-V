@@ -22,7 +22,9 @@ model:
 ollama:
   host: "http://localhost:11434"
   timeout: 120
-  keep_alive: "10m"
+  keep_alive: "24h"
+  num_gpu: -1                      # Force full GPU acceleration
+  num_thread: 10                   # Optimized for neural throughput
 
 # ───────────────────────── Memory ─────────────────────────
 memory:

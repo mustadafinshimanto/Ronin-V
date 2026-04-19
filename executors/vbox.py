@@ -43,19 +43,25 @@ class VBoxExecutor:
 
     def execute(self, vm_name: str, username: str, password: str, command: str, args: List[str] = []) -> CommandResult:
         """
-        Execute a command in the guest VM.
+        Execute a command in the guest VM with shell wrapping for better environment handling.
         """
         try:
-            full_cmd = [
+            # Join command and args into a single string for shell wrapping
+            full_user_cmd = " ".join([command] + args)
+            
+            # Use /bin/bash for Linux guests (standard for Kali)
+            # We use --wait-stdout AND --wait-stderr to capture everything
+            vbox_args = [
                 self.vbox_path, "guestcontrol", vm_name, "run",
                 "--username", username,
                 "--password", password,
                 "--wait-stdout",
-                "--", command
-            ] + args
+                "--wait-stderr",
+                "--", "/bin/bash", "-c", full_user_cmd
+            ]
 
             process = subprocess.run(
-                full_cmd,
+                vbox_args,
                 capture_output=True,
                 text=True,
                 timeout=self.config.get("timeout", 60)

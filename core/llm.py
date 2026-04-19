@@ -32,10 +32,27 @@ class RoninLLM:
 
         ollama_host = config["ollama"].get("host", "http://localhost:11434")
         self.timeout = config["ollama"].get("timeout", 120)
-        self.keep_alive = config["ollama"].get("keep_alive", "10m")
+        self.keep_alive = config["ollama"].get("keep_alive", "24h")
+        self.num_gpu = config["ollama"].get("num_gpu", -1)
+        self.num_thread = config["ollama"].get("num_thread", 8)
 
         # Initialize Ollama client
         self.client = ollama.Client(host=ollama_host, timeout=self.timeout)
+
+    def preload_model(self):
+        """Force the model into VRAM immediately by sending an empty request."""
+        try:
+            self.client.generate(
+                model=self.model_name,
+                prompt="",
+                keep_alive=self.keep_alive,
+                options={
+                    "num_gpu": self.num_gpu,
+                    "num_thread": self.num_thread
+                }
+            )
+        except Exception:
+            pass
 
     def check_connection(self) -> bool:
         """Check if Ollama server is reachable."""
@@ -117,6 +134,8 @@ class RoninLLM:
             "temperature": self.temperature,
             "top_p": self.top_p,
             "num_ctx": self.ctx_length,
+            "num_gpu": self.num_gpu,
+            "num_thread": self.num_thread
         }
 
         try:

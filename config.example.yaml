@@ -36,6 +36,8 @@ memory:
 agent:
   auto_mode: true                  # Default to autonomous mode
   max_steps: 50                    # Extended tactical depth for complex tasks
+  vm_user: "kali"                  # Default VM username
+  vm_pass: "kali"                  # Default VM password
 
 # ───────────────────────── Executors ─────────────────────────
 executors:

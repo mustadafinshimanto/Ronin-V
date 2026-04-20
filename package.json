@@ -1,0 +1,42 @@
+{
+    "name": "ronin-v",
+    "version": "1.0.0",
+    "description": "<p align=\"center\">   <img src=\"assets/banner.png\" alt=\"Ronin-V Banner\" width=\"800\"> </p>",
+    "main": "index.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "start": "node dist/index.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/mustadafinshimanto/Ronin-V.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "type": "module",
+    "bugs": {
+        "url": "https://github.com/mustadafinshimanto/Ronin-V/issues"
+    },
+    "homepage": "https://github.com/mustadafinshimanto/Ronin-V#readme",
+    "dependencies": {
+        "@inquirer/prompts": "^8.4.2",
+        "@types/react": "^18.3.28",
+        "chalk": "^4.1.2",
+        "cli-markdown": "^3.5.1",
+        "execa": "^9.6.1",
+        "ink": "^5.2.1",
+        "ink-spinner": "^5.0.0",
+        "ink-text-input": "^6.0.0",
+        "lowdb": "^7.0.1",
+        "ollama": "^0.6.3",
+        "ora": "^5.4.1",
+        "react": "^18.3.1",
+        "ts-node": "^10.9.2",
+        "typescript": "^6.0.3",
+        "yaml": "^2.8.3"
+    },
+    "devDependencies": {
+        "@types/node": "^25.6.0"
+    }
+}

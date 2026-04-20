@@ -34,8 +34,10 @@ memory:
 
 # ───────────────────────── Agent ─────────────────────────
 agent:
-  auto_mode: true                  # Default to autonomous mode
-  max_steps: 50                    # Extended tactical depth for complex tasks
+  auto_mode: false                 # Default to manual (operator-approved) mode
+  max_steps: 50
+  vm_user: "kali"
+  vm_pass: "kali"                    # Extended tactical depth for complex tasks
 
 # ───────────────────────── Executors ─────────────────────────
 executors:
@@ -54,3 +56,4 @@ ui:
   markdown_rendering: true
   typing_effect: false
   typing_speed: 0.001
+

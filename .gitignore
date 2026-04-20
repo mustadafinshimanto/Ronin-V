@@ -77,3 +77,18 @@ debug.log
 # ─── Ronin-V Specific ───
 modelfiles/ # Usually contains large model files not suitable for Git
 chroma/ # Vector database files if not in data/
+
+# ─── Node.js ───
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+
+# ─── Build / Dist ───
+out/
+
+# ─── Scratch / Temporary ───
+scratch/
+tmp/
